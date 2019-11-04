@@ -8,18 +8,27 @@ Created on Tue Sep 24 16:26:45 2019
 
 import numpy as np
 import pyEM as em
-import os
 
 import pybdv
 from pybdv import transformations as tf
 import mrcfile as mrc
 
-navfile = 'test.nav'
+
+import sys
+import os
+
+navfile = sys.argv[1]
+# file name navigator
+
+# change path to working directory
+os.chdir(os.path.dirname(navfile))
 
 tomos = True
 
-downscale_factors = ([2,2,1],[2,2,1],[4,4,1])
+downscale_factors = ([1,2,2],[1,2,2],[1,2,2],[1,4,4])
 
+
+blow_2d = 10000
 
 # from the configuration in our Tecnai, will be used if no specific info can be found
 ta_angle = -11.3 
@@ -37,17 +46,47 @@ def write_h5(outname,data1,pxs,mat2,downscale_factors):
             #assert len(resolution) == ndim
         if ndim < 3: 
             assert ndim == 2, "Only support 2d"
-            d1=np.expand_dims(data1.copy(),axis=0)
-            data1=np.concatenate((d1,d1),axis=0)
+            data1=np.expand_dims(data1.copy(),axis=0)
+#            data1=np.concatenate((d1,d1),axis=0)
     
         
         print('Converting map '+outname+' into HDF5.')
         pybdv.make_bdv(data1,outfile,downscale_factors=downscale_factors,setup_name=outname)
+    
+    if type(pxs)==float or type(pxs)==np.float64:
+        scale = [pxs,pxs,blow_2d]
+        mat2[2,2] = blow_2d
+        mat2[2,3] = -blow_2d/2
+    elif len(pxs) == 1:
+        scale = [pxs,pxs,blow_2d]
+        mat2[2,2] = blow_2d
+        mat2[2,3] = -blow_2d/2
+    elif len(pxs) == 3:
+        scale = pxs
+    else:
+        print('Pixelsize was wrongly defined!!!')
         
-    tf.write_resolution_and_matrix(outfile+'.xml',outfile+'.xml',[pxs,pxs,10000],mat2)
+        
+        
+    tf.write_resolution_and_matrix(outfile+'.xml',outfile+'.xml',scale,mat2)
     
 
 #=======================================
+
+
+def mapcorners(item):
+    return np.squeeze([[np.array(item['PtsX']).astype(float)],[np.array(item['PtsY']).astype(float)]])
+
+# =========================================
+    
+
+def smallestcorner(corners):
+    sm_idx = np.argmin(np.sum(corners,axis=0))
+    return np.array((corners[0,sm_idx],corners[1,sm_idx]))
+    
+
+# =========================================
+    
 
 
 
@@ -70,16 +109,24 @@ for idx,item in enumerate(allitems):
         
         data = mergemap['im'].copy()
         
-        mat = np.linalg.inv(mergemap['matrix'])
+        mat = np.linalg.inv(mergemap['matrix'])        
         
-        mat1=np.concatenate((mat,[[0,float(item['PtsX'][0])],[0,float(item['PtsY'][0])]]),axis=1)
+        corners = mapcorners(item)
         
-        mat2=np.concatenate((mat1,[[0,0,10000,0],[0,0,0,1]]))
         
-        pxs=mergemap['mapheader']['pixelsize'] 
+        if 'Imported' in item.keys():
+            transl = smallestcorner(corners)
+        else:
+            transl = [corners[0,0],corners[1,0]]
+                        
+        mat1=np.concatenate((mat,[[0,transl[0]],[0,transl[1]]]),axis=1)
+                
+        mat2 = np.concatenate((mat1,[[0,0,1,0],[0,0,0,1]]))
+        
+        pxs = mergemap['mapheader']['pixelsize'] 
         
         outname = itemname
-        data0 = np.uint8((data-data.min())/data.max()*255)
+        data0 = data#np.uint8((data-data.min())/data.max()*255)
         
         mapinfo.append([idx,pxs,itemname,mat])
         
@@ -94,9 +141,13 @@ for idx,item in enumerate(allitems):
             write_h5(outname,data0,pxs,mat2,downscale_factors)
         
         
-        
+print('done writing maps')       
             
 if tomos:
+    
+    zstretch = 10
+    #factor to inflate tomograms in z
+    
     pxszs = np.array([row[1] for row in mapinfo])
     
     for file in os.listdir():
@@ -112,39 +163,40 @@ if tomos:
             elif os.path.exists(base+'a.st.mdoc'):
                 mdocfile = base+'a.st.mdoc'
             else:
-                if os.path.exists(base+'.st'):
-                    tiltfile = base+'.st'
-                elif os.path.exists(base+'b.st'):
-                    dual = True
-                    tiltfile = base+'b.st'
-                    
-                elif os.path.exists(base+'a.st'):
-                    tiltfile = base+'a.st'
-                else:
-                    print('No tilt stack or mdoc found for tomogram ' + base +'. Skipping it.'
-                    continue
-                
                 # extract stage position from tiltfile
                 mdocfile=''
                 
-                stageinfo = os.popen('extracttilts -s '+tiltfile).read()
-                stagepos = stageinfo.splitlines()[-50]
-                stage = stagepos.split('  ')
-                while '' in stage:
-                    stage.remove('')    
+
+            if os.path.exists(base+'.st'):
+                tiltfile = base+'.st'
+            elif os.path.exists(base+'b.st'):
+                dual = True
+                tiltfile = base+'b.st'
                 
-                pos = np.array(stage).astype(float)
+            elif os.path.exists(base+'a.st'):
+                tiltfile = base+'a.st'
+            else:
+                print('No tilt stack or mdoc found for tomogram ' + base +'. Skipping it.')
+                continue
                 
-                # get pixel size
-                mfile = mrc.mmap(file)
-                tomopx = mfile.voxel_size.x
                 
-                mfile.close()
                 
-                # find map with comparable pixel size and use its scale matrix
-                matchidx = np.argmin(np.abs(1-pxszs/tomopx))
-                map_px = pxszs[matchidx]
-                mat = np.multiply(mapinfo[matchidx][3] , tomopx/map_px)
+            stageinfo = os.popen('extracttilts -s '+tiltfile).read()
+            stagepos = stageinfo.splitlines()[-50]
+            stage = stagepos.split('  ')
+            while '' in stage:
+                stage.remove('')    
+            
+            pos = np.array(stage).astype(float)
+                
+            # get pixel size
+            mfile = mrc.mmap(file)
+            tomopx = mfile.voxel_size.x / 10000 # in um
+                        
+            # find map with comparable pixel size and use its scale matrix
+            matchidx = np.argmin(np.abs(1-pxszs/tomopx))
+            map_px = pxszs[matchidx]
+            mat = np.multiply(mapinfo[matchidx][3] , tomopx/map_px)
                 
             if len(mdocfile)>0:
                 
@@ -154,41 +206,69 @@ if tomos:
                 ta_angle = float(ta_angle2[:ta_angle2.find(',')])
                 
                 slice1 = em.mdoc_item(mdlines,'ZValue = 0')
-                navidx = int(slice1['NavigatorLabel'][0])
-                navitem = allitems[navidx]
+                navlabel = slice1['NavigatorLabel'][0]
                 
-                tomopx = int(slice1['PixelSpacing'])                
-                matchidx = np.argmin(np.abs(1-pxszs/tomopx))
-                map_px = pxszs[matchidx]
-                mat = np.multiply(mapinfo[matchidx][3] , tomopx/map_px)
+                navitem = em.nav_find(allitems,'# Item',navlabel)
+                if navitem ==[]:
+                    navitem = em.nav_find(allitems,'# Item','m_'+navlabel)
+                                
                 
-                # if underlying map
-                if navitem['Type'][0] == '2':
-                    mapfile = em.map_file(navitem)
-                    map_mrc = mrc.mmap(mapfile, permissive = 'True')
-                    map_px = map_mrc.voxel_size.x
-                    map_mrc.close()
+                if not navitem ==[]:
+                    navitem = navitem[0]
+                    tomopx = float(slice1['PixelSpacing'][0]) / 10000 # in um            
+                    matchidx = np.argmin(np.abs(1-pxszs/tomopx))
+                    map_px = pxszs[matchidx]
+                    mat = np.multiply(mapinfo[matchidx][3] , tomopx/map_px)
                     
-                    # check if tomo mag matches map mag
-                    if np.abs(1-map_px/tomopx) < 0.05:
-                        mat = np.linalg.inv(em.map_matrix(navitem))
-                
-                xval = float(navitem['StageXYZ'][0])
-                yval = float(navitem['StageXYZ'][1])
-                pos = numpy.array([xval,yval])
+                    # if underlying map
+                    if navitem['Type'][0] == '2':
+                        mapfile = em.map_file(navitem)
+                        map_mrc = mrc.mmap(mapfile, permissive = 'True')
+                        map_px = map_mrc.voxel_size.x
+                        map_mrc.close()
+                        
+                        # check if tomo mag matches map mag
+                        if np.abs(1-map_px/tomopx) < 0.05:
+                            mat = np.linalg.inv(em.map_matrix(navitem))
+                    
+                    xval = float(navitem['StageXYZ'][0])
+                    yval = float(navitem['StageXYZ'][1])
+                    pos = np.array([xval,yval])
                 
             # compensate rotation
             
             phi = np.radians(ta_angle)
             c = np.cos(phi)
             s = np.sin(phi)
-            rotmat = np.array([[c,-s],[s,c]])
+            rotmat = np.array([[c,s],[-s,c]])
+            
             
             mat = np.dot(mat,rotmat)
             
-            mat1=np.concatenate((mat,[[0,pos[0]],[0,pos[1]]]),axis=1)        
-            mat2=np.concatenate((mat1,[[0,0,10000,0],[0,0,0,1]]))
-        
+            # determine location of tomogram corners
+            
+            posx = [-1,-1,1,1]*mfile.header.nx/2
+            posy = [-1,1,-1,1]*mfile.header.ny/2
+            
+            pxcorners = np.array([posy,posx])
+            
+            corners = np.array(np.dot(mat,pxcorners))+[[pos[0]],[pos[1]]]
+            
+            transl = smallestcorner(corners)
+            
+            
+            mat1=np.concatenate((mat,[[0,transl[0]],[0,transl[1]]]),axis=1)        
+            mat2=np.concatenate((mat1,np.dot([[0,0,tomopx,-mfile.header.nz/2*tomopx],[0,0,0,1/zstretch]],zstretch)),axis=0)
+            
+            outname = base
+            data = mfile.data
+            data0 = np.swapaxes(data,0,2)
+            data1 = np.fliplr(data0)            
+            data2 = np.swapaxes(data1,0,2)
+            mfile.close()
+            
+            write_h5(outname,data2,[tomopx,tomopx,tomopx*zstretch],mat2,downscale_factors)
+            
             
                 
                 
