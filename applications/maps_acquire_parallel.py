@@ -33,6 +33,7 @@ target_map = 'refmap'
 import os
 import os.path
 import numpy
+from operator import itemgetter
 
 import multiprocessing as mp
 
@@ -42,72 +43,17 @@ import multiprocessing as mp
 import mrcfile as mrc
 import pyEM as em
 
-
-# start script
-
-
-navlines = em.loadtext(navname)
-(targetitem,junk) = em.nav_item(navlines,target_map)
-
-targetfile = em.map_file(targetitem)
-target_mrc = mrc.open(targetfile, permissive = 'True')
-targetheader = em.map_header(target_mrc)
-
-t_mat = em.map_matrix(targetitem)
-
-newnavf = navname[:-4] + '_automaps.nav'
-nnf = open(newnavf,'w')
-nnf.write("%s\n" % navlines[0])
-nnf.write("%s\n" % navlines[1])
-
-
-allitems = em.fullnav(navlines)
-
-
-acq = filter(lambda item:item.get('Acquire'),allitems)
-acq = list(filter(lambda item:item['Acquire']==['1'],acq))
-
-non_acq = [x for x in allitems if x not in acq]
-
-non_acq.remove(targetitem)
-    
-maps = {}
-
-newmapid = [em.newID(allitems,10000)]
-
-outnav=list()
-ntotal = len(acq)
-
-newnav = list()
-
-for idx,acq_item in enumerate(acq):
-  print('Processing source map for navitem '+ str(idx+1) + '/' + str(ntotal) + ' (%2.0f%% done)' %(idx*100/ntotal))
-
-  mapitem = em.realign_map(acq_item,allitems)
-  newmapid.append(em.newID(allitems,newmapid[-1] + 1))
-  itemid = mapitem['# Item']
-    
-  if not itemid in maps.keys():
-    maps[itemid] = em.mergemap(mapitem)
-    groupid = em.newID(allitems,999000000+int(mapitem['MapID'][0][-6:]))
-    non_acq.remove(mapitem)
-    
-    # NoRealign
-    mapitem['Color'] = '5'
-        
-    newnav.append(mapitem)
-       
-    
-def point2virtmap(acq_item, ix, ntotal, maps, targetheader, targetitem, outitem):
+def point2virtmap(acq_item, ix, ntotal, targetheader, targetitem, allitems, newmapid, groupid, outitem):
   print('Processing navitem '+ str(ix+1) + '/' + str(ntotal) + ' (%2.0f%% done)' %(ix*100/ntotal))
   mapitem = em.realign_map(acq_item,allitems)  
-  itemid = mapitem['# Item']    
+  itemid = mapitem['# Item']
+  thismap = em.mergemap(mapitem)
 
   # combine rotation matrices
+  t_mat = em.map_matrix(targetitem)  
+  map_mat = thismap['matrix'] 
   
-  map_mat = maps[itemid]['matrix'] 
-  
-  maptf = numpy.linalg.inv(map_mat) * t_mat  
+  maptf = (numpy.linalg.inv(map_mat) * t_mat).T  
   
   xval = float(acq_item['StageXYZ'][0]) #(float(acq_item['PtsX'][0]))
   yval = float(acq_item['StageXYZ'][1]) #(float(acq_item['PtsY'][0]))
@@ -116,13 +62,13 @@ def point2virtmap(acq_item, ix, ntotal, maps, targetheader, targetitem, outitem)
   
   # calculate the pixel coordinates
 
-  pt_px1 = em.get_pixel(acq_item,maps[itemid])
+  pt_px1 = em.get_pixel(acq_item,thismap)
 
-  px_scale = targetheader['pixelsize'] /( maps[itemid]['mapheader']['pixelsize'] )
+  px_scale = targetheader['pixelsize'] /(thismap['mapheader']['pixelsize'] )
 
   imsz1 = numpy.array([targetheader['ysize'],targetheader['xsize']])
   
-  im = numpy.array(maps[itemid]['im'])
+  im = numpy.array(thismap['im'])
 
   im2, p2 = em.map_extract(im,pt_px1,pt_px1,px_scale,imsz1,maptf)
   
@@ -183,37 +129,93 @@ def point2virtmap(acq_item, ix, ntotal, maps, targetheader, targetitem, outitem)
     newnavitem['SamePosId'] = acq_item['MapID']
     newnavitem['GroupID'] = [str(groupid)]
     # newnavitem['MapWidthHeight'] = [str(im2size[0]),str(im2size[1])]
-    newnavitem['ImageType'] = ['2']
+    newnavitem['ImageType'] = ['0']
     newnavitem['MapMinMaxScale'] = [str(numpy.min(im2)),str(numpy.max(im2))]
     newnavitem['NumPts'] = ['5']
     newnavitem['# Item'] = 'map_' + acq_item['# Item']    
 
     outitem.put(newnavitem)
-
-
-
-outitem = mp.Queue()
-
-processes = [mp.Process(target=point2virtmap, args=(x, ix, ntotal, maps, targetheader, targetitem, outitem)) for ix,x in enumerate(acq)]
-
-for p in processes:
-    p.start()
     
-for p in processes:
-    p.join()
+
+
+
+# start script
+if __name__ == '__main__':
+    mp.set_start_method('spawn')
+    navlines = em.loadtext(navname)
+    (targetitem,junk) = em.nav_item(navlines,target_map)
     
-outnav = [outitem.get() for p in processes]
-
-
-#for nitem in non_acq: 
-#    newnav.append(nitem)
-  
-for nitem in outnav:
-    newnav.append(nitem)
-   
-for nitem in newnav: 
-  out = em.itemtonav(nitem,nitem['# Item'])
-  for item in out: nnf.write("%s\n" % item)
-
+    targetfile = em.map_file(targetitem)
+    target_mrc = mrc.open(targetfile, permissive = 'True')
+    targetheader = em.map_header(target_mrc)
+    
+    newnavf = navname[:-4] + '_automaps.nav'
+    nnf = open(newnavf,'w')
+    nnf.write("%s\n" % navlines[0])
+    nnf.write("%s\n" % navlines[1])
+    
+    
+    allitems = em.fullnav(navlines)
+    
+    
+    acq = filter(lambda item:item.get('Acquire'),allitems)
+    acq = list(filter(lambda item:item['Acquire']==['1'],acq))
+    
+    non_acq = [x for x in allitems if x not in acq]
+    
+    non_acq.remove(targetitem)
+        
+    maps = {}
+    
+    newmapid = [em.newID(allitems,10000)]
+    groupid = list()
+    
+    outnav=list()
+    ntotal = len(acq)
+    
+    newnav = list()
+    
+    for idx,acq_item in enumerate(acq):
+      print('Processing source map for navitem '+ str(idx+1) + '/' + str(ntotal) + ' (%2.0f%% done)' %(idx*100/ntotal))
+    
+      mapitem = em.realign_map(acq_item,allitems)
+      newmapid.append(em.newID(allitems,newmapid[-1] + 1))
+      itemid = mapitem['# Item']
+      
+      if not itemid in maps.keys():
+        maps[itemid] = em.mergemap(mapitem)
+        groupid.append(em.newID(allitems,999000000+int(mapitem['MapID'][0][-6:])))
+        non_acq.remove(mapitem)
+        
+        # NoRealign
+        mapitem['Color'] = '5'
             
-nnf.close()
+        newnav.append(mapitem)
+       
+    
+    outitem = mp.Queue()
+    
+    processes = [mp.Process(target=point2virtmap, args=(x, ix, ntotal, targetheader, targetitem, allitems, newmapid, groupid, outitem)) for ix,x in enumerate(acq)]
+    
+    for p in processes:
+        p.start()
+        
+    for p in processes:
+        p.join()
+        
+    outnav = [outitem.get() for p in processes]
+    
+    outnav.sort(key=itemgetter('# Item'))
+    
+    #for nitem in non_acq: 
+    #    newnav.append(nitem)
+      
+    for nitem in outnav:
+        newnav.append(nitem)
+       
+    for nitem in newnav: 
+      out = em.itemtonav(nitem,nitem['# Item'])
+      for item in out: nnf.write("%s\n" % item)
+    
+                
+    nnf.close()

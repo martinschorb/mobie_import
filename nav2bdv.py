@@ -28,20 +28,21 @@ tomos = True
 downscale_factors = ([1,2,2],[1,2,2],[1,2,2],[1,4,4])
 
 
-blow_2d = 10000
+blow_2d = 1
 
 # from the configuration in our Tecnai, will be used if no specific info can be found
 ta_angle = -11.3 
 
 #======================================
             
-def write_h5(outname,data1,pxs,mat2,downscale_factors):
+def write_h5(outname,data1,pxs,mat2,downscale_factors,blow_2d):
     
     outfile = os.path.join('bdv',outname)
-    ndim = data1.ndim
     
+        
     
     if not os.path.exists(outfile+'.h5'):
+        ndim = data1.ndim
         if ndim > 2: assert ndim == 3, "Only support 3d"
             #assert len(resolution) == ndim
         if ndim < 3: 
@@ -51,6 +52,7 @@ def write_h5(outname,data1,pxs,mat2,downscale_factors):
     
         
         print('Converting map '+outname+' into HDF5.')
+        data1[data1==0]=1
         pybdv.make_bdv(data1,outfile,downscale_factors=downscale_factors,setup_name=outname)
     
     if type(pxs)==float or type(pxs)==np.float64:
@@ -81,7 +83,7 @@ def mapcorners(item):
     
 
 def smallestcorner(corners):
-    sm_idx = np.argmin(np.sum(corners,axis=0))
+    sm_idx = np.argmin(np.sum([corners[0,:],corners[1,:]],axis=0))
     return np.array((corners[0,sm_idx],corners[1,sm_idx]))
     
 
@@ -102,6 +104,7 @@ mapinfo = list()
 for idx,item in enumerate(allitems):
     if item['Type'][0] == '2': ## item is a map
         itemname=item['# Item']
+        outname = itemname
         
         print('Processing map '+itemname+' to be added to BDV.')                      
                       
@@ -125,8 +128,15 @@ for idx,item in enumerate(allitems):
         
         pxs = mergemap['mapheader']['pixelsize'] 
         
-        outname = itemname
-        data0 = data#np.uint8((data-data.min())/data.max()*255)
+        if data.dtype.kind=='i':
+            if data.dtype.itemsize == 1:
+                data0 = np.uint8(data)
+            elif data.dtype.itemsize == 2:
+                data0 = np.uint16(data)
+            else:
+                data0 = np.uint16((data-data.min())/data.max()*65535)
+        else:
+            data0 = data.copy()
         
         mapinfo.append([idx,pxs,itemname,mat])
         
@@ -135,17 +145,17 @@ for idx,item in enumerate(allitems):
                 outname = itemname+'_ch'+str(channel)
                 data1 = np.squeeze(data0[:,:,channel])
                 
-                if data1.max() > 0: write_h5(outname,data1,pxs,mat2,downscale_factors)            
+                if data1.max() > 0: write_h5(outname,data1,pxs,mat2,downscale_factors,blow_2d)            
             
         else:            
-            write_h5(outname,data0,pxs,mat2,downscale_factors)
+            write_h5(outname,data0,pxs,mat2,downscale_factors,blow_2d)
         
         
 print('done writing maps')       
             
 if tomos:
-    
-    zstretch = 10
+    print('starting to convert the tomograms')
+    zstretch = blow_2d
     #factor to inflate tomograms in z
     
     pxszs = np.array([row[1] for row in mapinfo])
@@ -179,7 +189,7 @@ if tomos:
                 print('No tilt stack or mdoc found for tomogram ' + base +'. Skipping it.')
                 continue
                 
-                
+            print('processing tomogram '+base+'.')    
                 
             stageinfo = os.popen('extracttilts -s '+tiltfile).read()
             stagepos = stageinfo.splitlines()[-50]
@@ -188,7 +198,8 @@ if tomos:
                 stage.remove('')    
             
             pos = np.array(stage).astype(float)
-                
+            
+            
             # get pixel size
             mfile = mrc.mmap(file)
             tomopx = mfile.voxel_size.x / 10000 # in um
@@ -209,6 +220,7 @@ if tomos:
                 navlabel = slice1['NavigatorLabel'][0]
                 
                 navitem = em.nav_find(allitems,'# Item',navlabel)
+
                 if navitem ==[]:
                     navitem = em.nav_find(allitems,'# Item','m_'+navlabel)
                                 
@@ -261,13 +273,31 @@ if tomos:
             mat2=np.concatenate((mat1,np.dot([[0,0,tomopx,-mfile.header.nz/2*tomopx],[0,0,0,1/zstretch]],zstretch)),axis=0)
             
             outname = base
-            data = mfile.data
-            data0 = np.swapaxes(data,0,2)
-            data1 = np.fliplr(data0)            
-            data2 = np.swapaxes(data1,0,2)
+            
+            if not os.path.exists(outname+'.h5'):
+                data = mfile.data
+                
+                if data.dtype.kind=='i':
+                    if data.dtype.itemsize == 1:
+                        data0 = np.uint8(data)
+                    elif data.dtype.itemsize == 2:
+                        data0 = np.uint16(data)
+                    else:
+                        data0 = np.uint16((data-data.min())/data.max()*65535)
+                else:
+                    data0 = data.copy()
+                
+                
+        
+                data0 = np.swapaxes(data,0,2)
+                data1 = np.fliplr(data0)
+                data2 = np.swapaxes(data1,0,2)
+            else:
+                data2 = []
+          
             mfile.close()
             
-            write_h5(outname,data2,[tomopx,tomopx,tomopx*zstretch],mat2,downscale_factors)
+            write_h5(outname,data2,[tomopx,tomopx,tomopx*zstretch],mat2,downscale_factors,blow_2d)
             
             
                 
