@@ -58,11 +58,11 @@ def write_h5(outname,data1,pxs,mat2,downscale_factors,blow_2d):
     if type(pxs)==float or type(pxs)==np.float64:
         scale = [pxs,pxs,blow_2d]
         mat2[2,2] = blow_2d
-        mat2[2,3] = -blow_2d/2
+        mat2[2,3] = 0#-blow_2d/2
     elif len(pxs) == 1:
         scale = [pxs,pxs,blow_2d]
         mat2[2,2] = blow_2d
-        mat2[2,3] = -blow_2d/2
+        mat2[2,3] = 0#-blow_2d/2
     elif len(pxs) == 3:
         scale = pxs
     else:
