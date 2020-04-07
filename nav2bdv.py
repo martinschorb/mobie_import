@@ -12,6 +12,7 @@ import glob
 import re
 import sys
 import os
+import xml.etree.ElementTree as ET
 
 navfile = sys.argv[1]
 # file name navigator
@@ -20,10 +21,12 @@ navfile = sys.argv[1]
 os.chdir(os.path.dirname(navfile))
 
 tomos = True
+blendmont = False
+
+
+
 
 downscale_factors = ([1,2,2],[1,2,2],[1,2,2],[1,4,4])
-
-
 blow_2d = 1
 
 # from the configuration in our Tecnai, will be used if no specific info can be found
@@ -31,15 +34,97 @@ ta_angle = -11.3
 
 #%%
 
+def write_fast_xml(outname,views):
+    
+    
+    
+    
+     # write top-level data
+    root = ET.Element('SpimData')
+    root.set('version', '0.2')
+    bp = ET.SubElement(root, 'BasePath')
+    bp.set('type', 'relative')
+    bp.text = '.'
+
+    # make the sequence description element
+    seqdesc = ET.SubElement(root, 'SequenceDescription')    
+    
+    
+    # make the image loader
+    imgload = ET.SubElement(seqdesc, 'ImageLoader')    
+    imgload.set('format', 'spimreconstruction.filelist')
+    il2c = ET.SubElement(imgload,'imglib2container')
+    il2c.text = 'ArrayImgFactory'
+    zg = ET.SubElement(imgload,'ZGrouped')
+    zg.text = 'false'
+    
+    files = ET.SubElement(imgload,'files')
+    
+    # make the view descriptions
+    viewsets = ET.SubElement(seqdesc, 'ViewSetups')
+    
+    # timepoint description
+    tpoints = ET.SubElement(seqdesc, 'Timepoints')
+    tpoints.set('type', 'range')
+    ET.SubElement(tpoints, 'first').text = '0'
+    ET.SubElement(tpoints, 'last').text = '0'
+    
+    # make the registration decriptions
+    vregs = ET.SubElement(root, 'ViewRegistrations')
+    
+    # Some more stuff that BisStitcher has. Maybe it's needed
+    MiV = ET.SubElement(seqdesc, 'MissingViews')
+    Vip = ET.SubElement(root, 'ViewInterestPoints')
+    BBx = ET.SubElement(root, 'BoundingBoxes')
+    PSF = ET.SubElement(root, 'PointSpreadFunctions')
+    StR = ET.SubElement(root, 'StitchingResults')
+    InA = ET.SubElement(root, 'IntensityAdjustments')
+    
+    pybdv.metadata._initialize_attributes(viewsets, views[0]['attributes'])    
+        
+    for thisview in views:
+        pybdv.metadata._update_attributes(viewsets, thisview['attributes'])
+        
+        thisFMap = ET.SubElement(files,'FileMapping')
+        thisFMap.set("view_setup",str(thisview['setup_id']))
+        thisFMap.set("timepoint",'0')
+        thisFMap.set("series",'0')
+        if 'channel' in thisview['attributes'].keys():
+            thisFMap.set("channel",str(thisview['attributes']['channel']))
+        else:
+            thisFMap.set("channel",'0')
+        
+        thisfile = ET.SubElement(thisFMap,'file')
+        thisfile.set("type","relative")
+        thisfile.text = thisview['file']
+        
+        if not 'setup_name' in thisview.keys():
+            thisview['setup_name']=str(thisview['setup_id'])
+        
+        # write view setup
+        pybdv.metadata._require_view_setup(viewsets,thisview['setup_id'],thisview['setup_name'],thisview['resolution'],thisview['size'],thisview['attributes'],'nm',False)
+        # write transformation(s)
+        pybdv.metadata._write_affine(vregs,thisview['setup_id'],'0',thisview['trafo'])
+
+        # write the xml
+    pybdv.metadata.indent_xml(root)
+    tree = ET.ElementTree(root)
+    tree.write(outname)
+        
+
+
+
+
+
+
 #======================================
             
-def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d):
+def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d,append=False,setup_name=outname):
     
-    outfile = os.path.join('bdv',outname)
-    
+    outfile = os.path.join('bdv',outname)   
         
     
-    if not os.path.exists(outfile+'.h5'):
+    if (append | (not os.path.exists(outfile+'.h5'))):
         ndim = data.ndim
         if ndim > 2: assert ndim == 3, "Only support 3d"
             #assert len(resolution) == ndim
@@ -48,22 +133,23 @@ def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d):
             data=np.expand_dims(data.copy(),axis=0)
 #            data1=np.concatenate((d1,d1),axis=0)
         
-        if data.dtype.kind=='i':
-            if data.dtype.itemsize == 1:
-                data0 = np.uint8(data-data.min())
-            elif data.dtype.itemsize == 2:
-                data0 = np.uint16(data-data.min())
-            else:
-                data0 = np.uint16((data-data.min())/data.max()*65535)
-        else:
-            data0 = data.copy()
+#        if data.dtype.kind=='i':
+#            if data.dtype.itemsize == 1:
+#                data0 = np.uint8(data-data.min())
+#            elif data.dtype.itemsize == 2:
+#                data0 = np.uint16(data-data.min())
+#            else:
+#                data0 = np.uint16((data-data.min())/data.max()*65535)
+#        else:
+#            data0 = data.copy()
+        
+        
+        
         
         
         
         print('Converting map '+outname+' into HDF5.')
-        data0[data0==0]=1
-        
-        pybdv.make_bdv(data0,outfile,downscale_factors=downscale_factors,setup_name=outname)
+
     
     if type(pxs)==float or type(pxs)==np.float64:
         scale = [pxs,pxs,blow_2d]
@@ -79,8 +165,7 @@ def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d):
         print('Pixelsize was wrongly defined!!!')
         
         
-        
-    tf.write_resolution_and_matrix(outfile+'.xml',outfile+'.xml',scale,mat2)
+#    tf.write_resolution_and_matrix(outfile+'.xml',outfile+'.xml',scale,mat2)
     
 
 #=======================================
@@ -116,35 +201,84 @@ for idx,item in enumerate(allitems):
         itemname=item['# Item']
         outname = itemname
         
-       # if not itemname == 'fm_r2':
-       #     continue
-        
         print('Processing map '+itemname+' to be added to BDV.')                      
         
         outfile = os.path.join('bdv',outname)   
-        mergemap = em.mergemap(item)
-        
-        if not os.path.exists(outfile+'.h5'):  
-        
-            data = mergemap['im'].copy()
-        
-        
+        mergemap = em.mergemap(item,blendmont=blendmont)              
         
         mat = np.linalg.inv(mergemap['matrix'])        
+        pxs = mergemap['mapheader']['pixelsize'] 
         
-        corners = mapcorners(item)
-        
+        corners = mapcorners(item)       
         
         if 'Imported' in item.keys():
             transl = [corners[0,2],corners[1,2]]
         else:
             transl = [corners[0,0],corners[1,0]]
-                        
-        mat1=np.concatenate((mat,[[0,transl[0]],[0,transl[1]]]),axis=1)
-                
-        mat2 = np.concatenate((mat1,[[0,0,1,0],[0,0,0,1]]))
         
-        pxs = mergemap['mapheader']['pixelsize'] 
+
+
+        # generate the individual transformation matrices
+        # 1)  The scale and rotation information form the map item        
+        mat_s = np.concatenate((mat,[[0,0],[0,0]]),axis=1)                
+        mat_s = np.concatenate((mat_s,[[0,0,1,0],[0,0,0,1]]))
+        
+        tf_sc = tf.matrix_to_transformation(mat_s).tolist()
+
+        # 2) The translation matrix to position the object in space (lower left corner)
+        mat_t = np.concatenate((np.eye(2),[[0,transl[0]],[0,transl[1]]]),axis=1)
+        mat_t = np.concatenate((mat_t,[[0,0,1,0],[0,0,0,1]]))
+        
+        tf_tr = tf.matrix_to_transformation(mat_t).tolist()
+
+        # continue based on prperties of the map
+        
+        if type(mergemap['im'])==list:
+            # map is composed of single tifs. Can feed them directly into BDV/BigStitcher
+            setup_id=0
+            tile_id=0
+            views=list()
+            
+            numim = len(mergemap['im'])
+            
+            digits = len(str(numim))
+            
+            if fast:
+                for imfile in mergemap['im']:                   
+                
+                    # directly into BigStitcher/BDV
+                    
+                    imbase = os.path.basename(imfile)
+                    thisview=dict()
+                    
+                    thisview['file'] = imbase
+                    
+                    thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
+                    thisview['resolution'] = [pxs,pxs,pxs]
+                    thisview['setup_name'] = 'tile_'+('{:0'+str(digits)+'}').format(tile_id)
+                    thisview['setup_id'] = setup_id
+                    
+                    thisview['attributes'] = dict()
+                    thisview['attributes']['tile'] = tile_id
+                    
+                    
+                    
+                    thisview['trafo'] = dict()
+                    thisview['trafo']['Translation'] = tf_tr
+                    thisview['trafo']['MapScaleMat'] = tf_sc
+                    
+                    mat_tpos = np.concatenate((np.eye(2),[[0,mergemap['tilepx'][tile_id][0]],[0,-mergemap['tilepx'][tile_id][1]]]),axis=1)
+                    mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
+        
+                    thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
+                     
+                                      
+                    tile_id = tile_id+1
+                    setup_id = setup_id+1
+                    
+                    views.append(thisview)
+                
+                write_fast_xml(outfile+'.xml',views)
         
         
         
@@ -160,15 +294,7 @@ for idx,item in enumerate(allitems):
                     outname = itemname+'_ch'+str(i)
                 i=i+1
        
-        if (mergemap['mapheader']['stacksize'] < 2 and len(data.shape) > 2):
-            for channel in range(data.shape[2]):            
-                outname = itemname+'_ch'+str(channel)
-                data1 = np.squeeze(data[:,:,channel])
-                
-                if data1.max() > 0: write_h5(outname,data1,pxs,mat2,downscale_factors,blow_2d)            
-            
-        else:            
-            write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d)
+       
         
         
 print('done writing maps')       
@@ -324,8 +450,8 @@ if tomos:
         
         
         
-        posx = [-1,-1,1,1]*xs/2
-        posy = [-1,1,-1,1]*ys/2
+        posx =  np.array([-1,1,1,-1])*xs/2
+        posy =  np.array([-1,-1,1,1])*ys/2
         
         pxcorners = np.array([posy,posx])
         

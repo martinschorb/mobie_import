@@ -90,7 +90,9 @@ for file in os.listdir():
     
         tform = np.reshape(tform,[4,4])
         
-
+        print(tform)
+        
+exit()
 
 
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
