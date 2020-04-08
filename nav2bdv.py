@@ -13,6 +13,7 @@ import re
 import sys
 import os
 import xml.etree.ElementTree as ET
+from skimage import io
 
 navfile = sys.argv[1]
 # file name navigator
@@ -21,10 +22,10 @@ navfile = sys.argv[1]
 os.chdir(os.path.dirname(navfile))
 
 tomos = True
-blendmont = False
+blendmont = True
+fast = False
 
-
-
+bdv_unit = 'nm'
 
 downscale_factors = ([1,2,2],[1,2,2],[1,2,2],[1,4,4])
 blow_2d = 1
@@ -119,18 +120,20 @@ def write_fast_xml(outname,views):
 
 #======================================
             
-def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d,append=False,setup_name=outname):
+def write_bdv(outname,data,view,blow_2d=1,outformat='h5'):
     
     outfile = os.path.join('bdv',outname)   
         
     
-    if (append | (not os.path.exists(outfile+'.h5'))):
-        ndim = data.ndim
-        if ndim > 2: assert ndim == 3, "Only support 3d"
-            #assert len(resolution) == ndim
-        if ndim < 3: 
-            assert ndim == 2, "Only support 2d"
-            data=np.expand_dims(data.copy(),axis=0)
+
+    ndim = data.ndim
+    if ndim > 2: assert ndim == 3, "Only support 3d"
+        #assert len(resolution) == ndim
+    if ndim < 3: 
+        assert ndim == 2, "Only support 2d"
+        data=np.expand_dims(data.copy(),axis=0)
+        
+        
 #            data1=np.concatenate((d1,d1),axis=0)
         
 #        if data.dtype.kind=='i':
@@ -144,25 +147,31 @@ def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d,append=False,setup_
 #            data0 = data.copy()
         
         
-        
-        
-        
-        
-        print('Converting map '+outname+' into HDF5.')
-
+    print('Converting map '+outname+' into BDV format ' +outformat+'.')
     
-    if type(pxs)==float or type(pxs)==np.float64:
-        scale = [pxs,pxs,blow_2d]
-        mat2[2,2] = blow_2d
-        mat2[2,3] = 0#-blow_2d/2
-    elif len(pxs) == 1:
-        scale = [pxs,pxs,blow_2d]
-        mat2[2,2] = blow_2d
-        mat2[2,3] = 0#-blow_2d/2
-    elif len(pxs) == 3:
-        scale = pxs
-    else:
-        print('Pixelsize was wrongly defined!!!')
+    pybdv.make_bdv(data,outfile,downscale_factors,
+                       resolution = view['resolution'],
+                       unit = bdv_unit, 
+                       setup_id = view['setup_id'],
+                       timepoint = view['timepoint'],
+                       setup_name = view['setup_name'],
+                       attributes = view['attributes'],
+                       affine = view['trafo'],
+                       overwrite = True)
+        
+#       
+#    if type(pxs)==float or type(pxs)==np.float64:
+#        scale = [pxs,pxs,blow_2d]
+#        mat2[2,2] = blow_2d
+#        mat2[2,3] = 0#-blow_2d/2
+#    elif len(pxs) == 1:
+#        scale = [pxs,pxs,blow_2d]
+#        mat2[2,2] = blow_2d
+#        mat2[2,3] = 0#-blow_2d/2
+#    elif len(pxs) == 3:
+#        scale = pxs
+#    else:
+#        print('Pixelsize was wrongly defined!!!')
         
         
 #    tf.write_resolution_and_matrix(outfile+'.xml',outfile+'.xml',scale,mat2)
@@ -231,7 +240,11 @@ for idx,item in enumerate(allitems):
         
         tf_tr = tf.matrix_to_transformation(mat_t).tolist()
 
-        # continue based on prperties of the map
+        
+
+
+
+        # continue based on properties of the map
         
         if type(mergemap['im'])==list:
             # map is composed of single tifs. Can feed them directly into BDV/BigStitcher
@@ -243,56 +256,63 @@ for idx,item in enumerate(allitems):
             
             digits = len(str(numim))
             
-            if fast:
-                for imfile in mergemap['im']:                   
+            
+            for imfile in mergemap['im']:                   
+            
+                # directly into BigStitcher/BDV
                 
-                    # directly into BigStitcher/BDV
-                    
-                    imbase = os.path.basename(imfile)
-                    thisview=dict()
-                    
-                    thisview['file'] = imbase
-                    
-                    thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
-                    thisview['resolution'] = [pxs,pxs,pxs]
-                    thisview['setup_name'] = 'tile_'+('{:0'+str(digits)+'}').format(tile_id)
-                    thisview['setup_id'] = setup_id
-                    
-                    thisview['attributes'] = dict()
-                    thisview['attributes']['tile'] = tile_id
-                    
-                    
-                    
-                    thisview['trafo'] = dict()
-                    thisview['trafo']['Translation'] = tf_tr
-                    thisview['trafo']['MapScaleMat'] = tf_sc
-                    
-                    mat_tpos = np.concatenate((np.eye(2),[[0,mergemap['tilepx'][tile_id][0]],[0,-mergemap['tilepx'][tile_id][1]]]),axis=1)
-                    mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
-        
-                    thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
-                     
-                                      
-                    tile_id = tile_id+1
-                    setup_id = setup_id+1
-                    
+                imbase = os.path.basename(imfile)
+                thisview=dict()
+                
+                thisview['file'] = imbase
+                
+                thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
+                thisview['resolution'] = [pxs,pxs,pxs]
+                thisview['setup_name'] = 'tile_'+('{:0'+str(digits)+'}').format(tile_id)
+                thisview['setup_id'] = setup_id
+                
+                thisview['attributes'] = dict()
+                thisview['attributes']['tile'] = tile_id
+                
+                
+                
+                thisview['trafo'] = dict()
+                thisview['trafo']['Translation'] = tf_tr
+                thisview['trafo']['MapScaleMat'] = tf_sc
+                
+                mat_tpos = np.concatenate((np.eye(2),[[0,mergemap['tilepx'][tile_id][0]],[0,-mergemap['tilepx'][tile_id][1]]]),axis=1)
+                mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
+    
+                thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
+                 
+                                  
+                tile_id = tile_id+1
+                setup_id = setup_id+1
+                
+                if not fast:
+                    data  = io.imread(imfile)
+                    write_bdv(outname,data,thisview,blow_2d)
+                else:
                     views.append(thisview)
                 
+            if fast:
                 write_fast_xml(outfile+'.xml',views)
+                
+            else:
+                #TODO: CONVERT TO BDV
+                
+                    
+                    
+        else:
+        # merged image exists
+            data = mergemap['im'].copy()
+            
         
         
         
         mapinfo.append([idx,pxs,itemname,mat])
         
-        if os.path.exists(outfile+'.h5'):
-            data=np.array([])
-        else:
-            i=0
-            while i<10:                
-                if os.path.exists(outfile+'_ch'+str(i)+'.h5'):
-                    data=np.array([])
-                    outname = itemname+'_ch'+str(i)
-                i=i+1
+        
        
        
         
