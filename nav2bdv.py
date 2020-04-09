@@ -22,10 +22,23 @@ navfile = sys.argv[1]
 os.chdir(os.path.dirname(navfile))
 
 tomos = True
-blendmont = True
+blend = True
 fast = False
 
-bdv_unit = 'nm'
+bdv_unit = 'um'
+
+timept = 0
+
+colors=dict()
+
+colors['_R'] = '255 0 0 255'
+colors['_G'] = '0 255 0 255'
+colors['_B'] = '0 0 255 255'
+colors['_W'] = '255 255 255 255'
+colors['BF'] = '255 255 255 255'
+
+outformat='.h5'
+
 
 downscale_factors = ([1,2,2],[1,2,2],[1,2,2],[1,4,4])
 blow_2d = 1
@@ -120,7 +133,7 @@ def write_fast_xml(outname,views):
 
 #======================================
             
-def write_bdv(outname,data,view,blow_2d=1,outformat='h5'):
+def write_bdv(outname,data,view,blow_2d=1,outf=outformat):
     
     outfile = os.path.join('bdv',outname)   
         
@@ -147,17 +160,17 @@ def write_bdv(outname,data,view,blow_2d=1,outformat='h5'):
 #            data0 = data.copy()
         
         
-    print('Converting map '+outname+' into BDV format ' +outformat+'.')
+    print('Converting map '+outname+' into BDV format ' +outf+'.')
     
     pybdv.make_bdv(data,outfile,downscale_factors,
                        resolution = view['resolution'],
                        unit = bdv_unit, 
                        setup_id = view['setup_id'],
-                       timepoint = view['timepoint'],
+                       timepoint = timept,
                        setup_name = view['setup_name'],
                        attributes = view['attributes'],
                        affine = view['trafo'],
-                       overwrite = True)
+                       overwrite = False)
         
 #       
 #    if type(pxs)==float or type(pxs)==np.float64:
@@ -212,8 +225,9 @@ for idx,item in enumerate(allitems):
         
         print('Processing map '+itemname+' to be added to BDV.')                      
         
-        outfile = os.path.join('bdv',outname)   
-        mergemap = em.mergemap(item,blendmont=blendmont)              
+        outfile = os.path.join('bdv',outname)
+                
+        mergemap = em.mergemap(item,blendmont=blend)              
         
         mat = np.linalg.inv(mergemap['matrix'])        
         pxs = mergemap['mapheader']['pixelsize'] 
@@ -258,7 +272,7 @@ for idx,item in enumerate(allitems):
             
             
             for imfile in mergemap['im']:                   
-            
+
                 # directly into BigStitcher/BDV
                 
                 imbase = os.path.basename(imfile)
@@ -268,7 +282,7 @@ for idx,item in enumerate(allitems):
                 
                 thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
                 thisview['resolution'] = [pxs,pxs,pxs]
-                thisview['setup_name'] = 'tile_'+('{:0'+str(digits)+'}').format(tile_id)
+                thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
                 thisview['setup_id'] = setup_id
                 
                 thisview['attributes'] = dict()
@@ -298,14 +312,57 @@ for idx,item in enumerate(allitems):
             if fast:
                 write_fast_xml(outfile+'.xml',views)
                 
-            else:
-                #TODO: CONVERT TO BDV
-                
-                    
-                    
         else:
-        # merged image exists
+            # merged image exists
             data = mergemap['im'].copy()
+            
+            setup_id = 0
+            
+            view=dict()
+                                
+            view['resolution'] = [pxs,pxs,pxs]
+            view['setup_id'] = setup_id
+            view['setup_name'] = itemname
+            
+            view['attributes'] = dict()                       
+            
+            view['trafo'] = dict()
+            view['trafo']['Translation'] = tf_tr
+            view['trafo']['MapScaleMat'] = tf_sc
+            
+            # Light microscopy image (CLEM)
+            if 'Imported' in item.keys():
+                # assign channels
+                view['displaysettings']=dict()
+                
+                if item['MapMinMaxScale'] == ['0', '0']:
+                    #RGB                    
+                    for chidx,ch in enumerate(['_R','_G','_B']):
+                        data0 = data[:,:,chidx]
+                        view['attributes']['channel'] = chidx
+                        
+                        
+                        view['setup_id'] = setup_id
+                        view['setup_name'] = itemname + ch
+                        
+                        
+                        view['displaysettings']['id'] = setup_id                        
+                        view['displaysettings']['color'] = colors[ch]
+                        
+                        if data0.max()>0: # ignore empty images
+                            write_bdv(outname,data0,view)
+                        
+                        setup_id = setup_id + 1
+                else:
+                    # single channel, check if color description in item label
+                    if itemname[-2:] in colors.keys():
+                        view['displaysettings']['color'] = colors[itemname[-2:]]                   
+                    
+                    write_bdv(outname,data,view)                
+        
+                
+            else:           
+                write_bdv(outname,data,view)
             
         
         
@@ -447,6 +504,7 @@ if tomos:
         c = np.cos(phi)
         s = np.sin(phi)
         rotmat = np.array([[c,s],[-s,c]])
+                      
         
         #??????
         mat = np.dot(mat,rotmat.T)
@@ -481,28 +539,51 @@ if tomos:
         transl = corners[:,0]#smallestcorner(corners)
         
         
-        mat1=np.concatenate((mat,[[0,transl[0]],[0,transl[1]]]),axis=1)        
-        mat2=np.concatenate((mat1,np.dot([[0,0,tomopx,-zs/2*tomopx],[0,0,0,1/zstretch]],zstretch)),axis=0)
+        # generate the individual transformation matrices
+        # 1)  The scale and rotation information form the map item        
+        mat_s = np.concatenate((mat,[[0,0],[0,0]]),axis=1)                
+        mat_s = np.concatenate((mat_s,np.dot([[0,0,tomopx,-zs/2*tomopx],[0,0,0,1/zstretch]],zstretch)),axis=0)
+        
+        tf_sc = tf.matrix_to_transformation(mat_s).tolist()
+
+        # 2) The translation matrix to position the object in space (lower left corner)
+        mat_t = np.concatenate((np.eye(2),[[0,transl[0]],[0,transl[1]]]),axis=1)
+        mat_t = np.concatenate((mat_t,[[0,0,1,0],[0,0,0,1]]))
+        
+        tf_tr = tf.matrix_to_transformation(mat_t).tolist()        
+               
+        
+        setup_id = 0
+            
+        view=dict()
+                            
+        view['resolution'] = [pxs,pxs,pxs*zstretch]
+        view['setup_id'] = setup_id
+        view['setup_name'] = 'tomo_'+ base
+                             
+        
+        view['trafo'] = dict()
+        view['trafo']['Translation'] = tf_tr
+        view['trafo']['RotScale'] = tf_sc
+        
+        view['attributes'] = dict()
+        data = mfile.data
         
         
-        if not os.path.exists(outfile+'.h5'):
-            data = mfile.data
-            
-            
-            # check if volume is rotated 
-            if data.shape[0]/data.shape[1]>5:
-                data = np.swapaxes(data,0,1)
-    
-            data0 = np.swapaxes(data,0,2)
-            data1 = np.fliplr(data0)
-            data2 = np.swapaxes(data1,0,2)
-        else:
-            data2 = []
+        # check if volume is rotated 
+        if data.shape[0]/data.shape[1]>5:
+            data = np.swapaxes(data,0,1)
+
+        data0 = np.swapaxes(data,0,2)
+        data1 = np.fliplr(data0)
+        data2 = np.swapaxes(data1,0,2)
+        
+        
+        write_bdv(outname,data2,view,blow_2d=blow_2d)
       
         mfile.close()
         
-        write_h5(outname,data2.copy(),[tomopx,tomopx,tomopx*zstretch],mat2,downscale_factors,blow_2d)
-            
+           
             
                 
                 
