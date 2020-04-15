@@ -15,14 +15,9 @@ import os
 import xml.etree.ElementTree as ET
 from skimage import io
 
-navfile = sys.argv[1]
-# file name navigator
-
-# change path to working directory
-os.chdir(os.path.dirname(navfile))
 
 tomos = True
-blend = True
+blend = False
 fast = False
 
 bdv_unit = 'um'
@@ -46,6 +41,15 @@ blow_2d = 1
 # from the configuration in our Tecnai, will be used if no specific info can be found
 ta_angle = -11.3 
 
+
+
+#%%
+
+navfile = sys.argv[1]
+# file name navigator
+
+# change path to working directory
+os.chdir(os.path.dirname(navfile))
 #%%
 
 def write_fast_xml(outname,views):
@@ -278,7 +282,7 @@ for idx,item in enumerate(allitems):
                 imbase = os.path.basename(imfile)
                 thisview=dict()
                 
-                thisview['file'] = imbase
+                thisview['file'] = '../'+imbase
                 
                 thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
                 thisview['resolution'] = [pxs,pxs,pxs]
@@ -286,7 +290,7 @@ for idx,item in enumerate(allitems):
                 thisview['setup_id'] = setup_id
                 
                 thisview['attributes'] = dict()
-                thisview['attributes']['tile'] = tile_id
+                thisview['attributes']['tile'] = tile_id#dict({'id':tile_id})
                 
                 
                 
@@ -294,7 +298,7 @@ for idx,item in enumerate(allitems):
                 thisview['trafo']['Translation'] = tf_tr
                 thisview['trafo']['MapScaleMat'] = tf_sc
                 
-                mat_tpos = np.concatenate((np.eye(2),[[0,mergemap['tilepx'][tile_id][0]],[0,-mergemap['tilepx'][tile_id][1]]]),axis=1)
+                mat_tpos = np.concatenate(([[1,0],[0,-1]],[[0,mergemap['tilepx'][tile_id][0]],[0,mergemap['mapheader']['ysize']+mergemap['tilepx'][tile_id][1]]]),axis=1)
                 mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
     
                 thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
@@ -333,21 +337,21 @@ for idx,item in enumerate(allitems):
             # Light microscopy image (CLEM)
             if 'Imported' in item.keys():
                 # assign channels
-                view['displaysettings']=dict()
+                view['attributes']['displaysettings']=dict()
                 
                 if item['MapMinMaxScale'] == ['0', '0']:
                     #RGB                    
                     for chidx,ch in enumerate(['_R','_G','_B']):
                         data0 = data[:,:,chidx]
-                        view['attributes']['channel'] = chidx
+                        view['attributes']['channel'] = dict({'id':int(chidx)})
                         
                         
                         view['setup_id'] = setup_id
                         view['setup_name'] = itemname + ch
                         
                         
-                        view['displaysettings']['id'] = setup_id                        
-                        view['displaysettings']['color'] = colors[ch]
+                        view['attributes']['displaysettings']['id'] = setup_id                        
+                        view['attributes']['displaysettings']['color'] = colors[ch]
                         
                         if data0.max()>0: # ignore empty images
                             write_bdv(outname,data0,view)
@@ -356,7 +360,7 @@ for idx,item in enumerate(allitems):
                 else:
                     # single channel, check if color description in item label
                     if itemname[-2:] in colors.keys():
-                        view['displaysettings']['color'] = colors[itemname[-2:]]                   
+                        view['attributes']['displaysettings']['color'] = colors[itemname[-2:]]                   
                     
                     write_bdv(outname,data,view)                
         
