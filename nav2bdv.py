@@ -107,10 +107,11 @@ def write_fast_xml(outname,views):
         thisFMap.set("view_setup",str(thisview['setup_id']))
         thisFMap.set("timepoint",'0')
         thisFMap.set("series",'0')
+        
         if 'channel' in thisview['attributes'].keys():
             thisFMap.set("channel",str(thisview['attributes']['channel']))
         else:
-            thisFMap.set("channel",'0')
+            thisFMap.set("channel",'0')          
         
         thisfile = ET.SubElement(thisFMap,'file')
         thisfile.set("type","relative")
@@ -227,6 +228,9 @@ for idx,item in enumerate(allitems):
         itemname=item['# Item']
         outname = itemname
         
+        mfbase = os.path.basename(item['MapFile'][0])
+        mfbase = mfbase[:mfbase.rfind(os.path.extsep)]
+        
         print('Processing map '+itemname+' to be added to BDV.')                      
         
         outfile = os.path.join('bdv',outname)
@@ -290,9 +294,10 @@ for idx,item in enumerate(allitems):
                 thisview['setup_id'] = setup_id
                 
                 thisview['attributes'] = dict()
-                thisview['attributes']['tile'] = tile_id#dict({'id':tile_id})
+                thisview['attributes']['tile'] = dict({'id':tile_id})
                 
-                
+                thisview['attributes']['displaysettings'] = dict({'color':colors['_W']})
+                thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
                 
                 thisview['trafo'] = dict()
                 thisview['trafo']['Translation'] = tf_tr
@@ -337,7 +342,7 @@ for idx,item in enumerate(allitems):
             # Light microscopy image (CLEM)
             if 'Imported' in item.keys():
                 # assign channels
-                view['attributes']['displaysettings']=dict()
+                view['attributes']['displaysettings']=dict({'Projection_Mode':'Sum'})
                 
                 if item['MapMinMaxScale'] == ['0', '0']:
                     #RGB                    
@@ -359,13 +364,19 @@ for idx,item in enumerate(allitems):
                         setup_id = setup_id + 1
                 else:
                     # single channel, check if color description in item label
-                    if itemname[-2:] in colors.keys():
+                    if itemname[-2:] in colors.keys(): 
                         view['attributes']['displaysettings']['color'] = colors[itemname[-2:]]                   
-                    
+                    elif mfbase[-2:] in colors.keys():
+                        view['attributes']['displaysettings']['color'] = colors[mfbase[-2:]]
+                        
                     write_bdv(outname,data,view)                
         
                 
-            else:           
+            else:
+                
+                view['attributes']['displaysettings'] = dict({'color':colors['_W']})
+                view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+                
                 write_bdv(outname,data,view)
             
         
