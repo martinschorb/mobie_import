@@ -12,65 +12,31 @@ import glob
 import re
 import sys
 import os
+import xml.etree.ElementTree as ET
+from skimage import io
+
+bdv_unit = 'um'
+
+timept = 0
+
+colors=dict()
+
+colors['_R'] = '255 0 0 255'
+colors['_G'] = '0 255 0 255'
+colors['_B'] = '0 0 255 255'
+colors['_W'] = '255 255 255 255'
+colors['BF'] = '255 255 255 255'
+
+outformat='.h5'
 
 
-downscale_factors = ([1,2,2],[1,2,2],[1,2,2],[1,4,4])
+downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4]))
+blow_2d = 1
 
+# from the configuration in our Tecnai, will be used if no specific info can be found
+ta_angle = -11.3 
 
 #%%
-
-#======================================
-            
-def write_h5(outname,data,pxs,mat2,downscale_factors,blow_2d):
-    
-    outfile = os.path.join('bdv',outname)
-    
-        
-    
-    if not os.path.exists(outfile+'.h5'):
-        ndim = data.ndim
-        if ndim > 2: assert ndim == 3, "Only support 3d"
-            #assert len(resolution) == ndim
-        if ndim < 3: 
-            assert ndim == 2, "Only support 2d"
-            data=np.expand_dims(data.copy(),axis=0)
-#            data1=np.concatenate((d1,d1),axis=0)
-        
-        if data.dtype.kind=='i':
-            if data.dtype.itemsize == 1:
-                data0 = np.uint8(data-data.min())
-            elif data.dtype.itemsize == 2:
-                data0 = np.uint16(data-data.min())
-            else:
-                data0 = np.uint16((data-data.min())/data.max()*65535)
-        else:
-            data0 = data.copy()
-        
-        
-        
-        print('Converting map '+outname+' into HDF5.')
-        data0[data0==0]=1
-        
-        pybdv.make_bdv(data0,outfile,downscale_factors=downscale_factors,setup_name=outname)
-    
-    if type(pxs)==float or type(pxs)==np.float64:
-        scale = [pxs,pxs,blow_2d]
-        mat2[2,2] = blow_2d
-        mat2[2,3] = 0#-blow_2d/2
-    elif len(pxs) == 1:
-        scale = [pxs,pxs,blow_2d]
-        mat2[2,2] = blow_2d
-        mat2[2,3] = 0#-blow_2d/2
-    elif len(pxs) == 3:
-        scale = pxs
-    else:
-        print('Pixelsize was wrongly defined!!!')
-        
-        
-        
-    tf.write_resolution_and_matrix(outfile+'.xml',outfile+'.xml',scale,mat2)
-    
-
 #=======================================
 
 
@@ -86,11 +52,40 @@ for file in os.listdir():
         
         # import transform
         tfile = em.loadtext(file)    
-        tform = np.array(list(map(float,tfile[0].split(','))))
-    
+        tform = np.array(list(map(float,tfile[0].split(','))))    
         tform = np.reshape(tform,[4,4])
         
-        print(tform)
+#        print(tform)
+        
+        #import BoundingBox
+        bbox = np.array(list(map(float,tfile[1].split(','))))    
+        
+        #import voxel size
+        voxs = np.array(list(map(float,tfile[2].split(','))))    
+        
+        # import translation
+        trans_0 = np.array(list(map(float,tfile[3].split(','))))  
+        
+        # import lattice info (double check properties)
+        latt = np.array(list(map(float,tfile[4].split(',')[0].split(' x '))))
+        
+        
+        # compensate initial translation (when opening Amira)
+        
+        trans = trans_0 + [bbox[0],bbox[2],bbox[4]]
+        
+        setup_id = 0
+            
+        view=dict()
+                            
+        view['resolution'] = [pxs,pxs,pxs]
+        view['setup_id'] = setup_id
+        view['setup_name'] = itemname
+        
+        view['attributes'] = dict()                       
+        
+        view['trafo'] = dict()
+        
         
 exit()
 
