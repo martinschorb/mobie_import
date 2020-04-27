@@ -149,7 +149,7 @@ def write_bdv(outname,data,view,blow_2d=1,outf=outformat):
         #assert len(resolution) == ndim
     if ndim < 3: 
         assert ndim == 2, "Only support 2d"
-        data=np.expand_dims(data.copy(),axis=0)
+       # data=np.expand_dims(data.copy(),axis=0)
         
         
 #            data1=np.concatenate((d1,d1),axis=0)
