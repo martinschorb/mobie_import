@@ -57,6 +57,7 @@ for tf_file in os.listdir():
         
         # set output
         if split_files:
+                setup_id = 0
                 basename = os.path.basename(tf_file)
                 outname = basename[:basename.rindex(os.path.extsep)]   
                        
@@ -69,7 +70,7 @@ for tf_file in os.listdir():
         tform = np.reshape(tform,[4,4])
         
         #import BoundingBox
-        bbox = np.array(list(map(float,tfile[1].split(','))))    
+        bbox = np.array(list(map(float,tfile[1].split(','))))
         
         #import voxel size
         voxs = np.array(list(map(float,tfile[2].split(','))))    
@@ -89,6 +90,14 @@ for tf_file in os.listdir():
         
         
         
+        
+        bbox_0 = bbox/np.repeat(voxs,2)
+        
+        bbox_n = bbox_0.copy()
+        bbox_n[0]=0;bbox_n[2]=0;bbox_n[4]=0
+        bbox_n[1]=bbox_n[1]-bbox_0[0];bbox_n[3]=bbox_n[3]-bbox_0[2];bbox_n[5]=bbox_n[5]-bbox_0[4]
+        
+               
         
         if len(files)<2:
             im_file = files[0]
@@ -116,7 +125,8 @@ for tf_file in os.listdir():
         
         # compensate with initial translation (when opening Amira)
         
-        trans = trans_0 + [bbox[0],bbox[2],bbox[4]]
+        trans = np.array([bbox[0],bbox[2],bbox[4]]) + trans_0 + np.array([bbox[1],bbox[3],bbox[5]])/2
+        
         
         # set up translation matrix
         
@@ -130,13 +140,11 @@ for tf_file in os.listdir():
         
         
         
-        # write BDV data 
-        
-        setup_id = 0
+        # write BDV data         
             
         view=dict()
                             
-        view['resolution'] = [pxs,pxs,pxs]
+        view['resolution'] = [voxs[0],voxs[2],voxs[1]]
         view['setup_id'] = setup_id
         view['setup_name'] = outname
         
@@ -148,7 +156,16 @@ for tf_file in os.listdir():
         
         
         
-        outfile = os.path.join('bdv',outname) 
+        outfile = os.path.join('bdv',outname+outformat) 
+        
+            
+    
+        ndim = data.ndim
+        if ndim > 2: assert ndim == 3, "Only support 3d"
+            #assert len(resolution) == ndim
+        if ndim < 3: 
+            assert ndim == 2, "Only support 2d"
+            data=np.expand_dims(data.copy(),axis=0)
         
         
         pybdv.make_bdv(data,outfile,downscale_factors,
