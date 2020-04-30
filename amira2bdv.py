@@ -116,16 +116,13 @@ for tf_file in os.listdir():
                 if 'tif' in im_file[im_file.rindex(os.path.extsep):]:
                     data0 = io.imread(im_file)
             
-                
-                
-                
-        t_0 = np.array([bbox[1],bbox[3],bbox[5]])/2
+
             
             
         
         # compensate with initial translation (when opening Amira)
         
-        trans = t_0 + trans_0
+        trans = np.array([bbox[1],bbox[3],bbox[5]])/2 + trans_0
         
         
         # set up translation matrix
@@ -138,7 +135,7 @@ for tf_file in os.listdir():
         
         #compensate data origin:
         
-        trans_or = - t_0
+        trans_or = - np.array([bbox_0[1],bbox_0[3],bbox_0[5]])/2
         
         
         mat_or = np.concatenate((np.eye(3),trans_or.reshape((3,1))),axis=1)
@@ -148,8 +145,8 @@ for tf_file in os.listdir():
         
         
         # make transformation matrix available
-        
-        tf_tform = tf.matrix_to_transformation(tform.T).tolist()
+        tform1 =  tform.T * np.append(voxs,1)
+        tf_tform = tf.matrix_to_transformation(tform1).tolist()
         
         # write BDV data         
             
