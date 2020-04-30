@@ -119,13 +119,13 @@ for tf_file in os.listdir():
                 
                 
                 
-                
+        t_0 = np.array([bbox[1],bbox[3],bbox[5]])/2
             
             
         
         # compensate with initial translation (when opening Amira)
         
-        trans = np.array([bbox[0],bbox[2],bbox[4]]) + trans_0 + np.array([bbox[1],bbox[3],bbox[5]])/2
+        trans = t_0 + trans_0
         
         
         # set up translation matrix
@@ -134,11 +134,22 @@ for tf_file in os.listdir():
         mat_t = np.concatenate((mat_t,[[0,0,0,1]]))
         
         tf_tr = tf.matrix_to_transformation(mat_t).tolist()
-
-        
-                
         
         
+        #compensate data origin:
+        
+        trans_or = - t_0
+        
+        
+        mat_or = np.concatenate((np.eye(3),trans_or.reshape((3,1))),axis=1)
+        mat_or = np.concatenate((mat_or,[[0,0,0,1]]))
+        tf_or = tf.matrix_to_transformation(mat_or).tolist()
+        
+        
+        
+        # make transformation matrix available
+        
+        tf_tform = tf.matrix_to_transformation(tform.T).tolist()
         
         # write BDV data         
             
@@ -150,11 +161,15 @@ for tf_file in os.listdir():
         
         view['attributes'] = dict()                       
         
-        view['trafo'] = dict()
+        view['trafo'] = dict()       
+        
         view['trafo']['Amira_Translation'] = tf_tr
-        
-        
-        
+        view['trafo']['Amira_Transform'] = tf_tform     
+        view['trafo']['Amira_Origin_Translation'] = tf_or
+     
+             
+
+       
         
         outfile = os.path.join('bdv',outname+outformat) 
         
@@ -176,7 +191,7 @@ for tf_file in os.listdir():
                    setup_name = view['setup_name'],
                    attributes = view['attributes'],
                    affine = view['trafo'],
-                   overwrite = 'metadata')
+                   overwrite = 'all')
         
         
         
