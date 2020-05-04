@@ -3,7 +3,6 @@
 
 
 import numpy as np
-import pyEM as em
 
 import pybdv
 from pybdv import transformations as tf
@@ -58,8 +57,10 @@ for tf_file in os.listdir():
                 outname = basename[:basename.rindex(os.path.extsep)]   
                        
                 
-        #get and parse transform file              
-        tfile = em.loadtext(tf_file)  
+        #get and parse transform file 
+        f = open(tf_file, 'r')
+        tfile = f.read().splitlines() 
+        f.close()               
         
         # import transform       
         tform = np.array(list(map(float,tfile[0].split(','))))    
