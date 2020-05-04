@@ -111,10 +111,15 @@ for tf_file in os.listdir():
                 
         else:
             # list of slices as a stack
-           
+            data = [];
+            
             for im_file in files:            
                 if 'tif' in im_file[im_file.rindex(os.path.extsep):]:
                     data0 = io.imread(im_file)
+                    if len(data)==0:
+                        data = np.expand_dims(data0.copy(),axis=0)
+                    else:
+                        data = np.concatenate((data,np.expand_dims(data0.copy(),axis=0)),axis=0)
             
 
             
@@ -180,7 +185,7 @@ for tf_file in os.listdir():
             data=np.expand_dims(data.copy(),axis=0)
         
         
-        pybdv.make_bdv(data,outfile,downscale_factors,
+        pybdv.make_bdv(data1,outfile,downscale_factors,
                    resolution = view['resolution'],
                    unit = bdv_unit, 
                    setup_id = view['setup_id'],
