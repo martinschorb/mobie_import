@@ -8,11 +8,7 @@ import pyEM as em
 import pybdv
 from pybdv import transformations as tf
 import mrcfile as mrc
-import glob
-import re
-import sys
 import os
-import xml.etree.ElementTree as ET
 from skimage import io
 
 bdv_unit = 'um'
