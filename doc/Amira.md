@@ -1,6 +1,10 @@
 # Conversion of BigDataViewer to Amira, 3D registration and back
 
-### Conversion from large data in BDV format to a downsampled volume in TIF format
+1. [Conversion from large data in BDV format](#BDVexport)
+
+2. [3D registration in Amira](#3Dreg)
+
+### Conversion from large data in BDV format to a downsampled volume in TIF format<a name="BDVexport"></a>
 
 
 - Drag the xml file of your BDV dataset onto Fiji
@@ -20,7 +24,7 @@
 - Save it as Tif using the EXACT file name of the xml file and add 
 **.bin*4*.tif**  with the *number* representing the binning factor.
 
-### 3D registration in Amira
+### 3D registration in Amira<a name="3Dreg"></a>
 
 - Load and visualize your data in Amira
 - In this example it is the Tif-stack generated before and a Micro-CT reconstruction in png format. (but it can be any Amira-compatible data)
