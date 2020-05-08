@@ -6,4 +6,17 @@
 - Drag the xml file of your BDV dataset onto Fiji
 - BioFormats will recognize it and offer you to load it…
 
-(https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
+![BioFormats](https://git.embl.de/schorb/bdv_convert/-/blob/master/doc/im/image4.png)
+
+- Select OK
+- After a little while (it reads the file header), it shows you a selection of resolutions. These are stored in the data container and can be loaded one by one. Select one that has a reasonable size (possibly smaller than 500x500x500) and resolution you need to detect your registration target items. Remember the binning factor (divide the original voxel number in “Series 0” with the one you just selected. Make sure you unselect Series0.
+
+![SeriesSelect](https://git.embl.de/schorb/bdv_convert/-/blob/master/doc/im/image1.png)
+
+- You will get an Image stack in Fiji (it takes a bit to load, be patient)
+
+![Stack](https://git.embl.de/schorb/bdv_convert/-/blob/master/doc/im/image5.png)
+
+- Save it as Tif using the EXACT file name of the xml file and add 
+**.bin*4*.tif**  with the *number* representing the binning factor.
+
