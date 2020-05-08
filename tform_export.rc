@@ -1,0 +1,138 @@
+#
+# export Transformation of a data object to a text file
+
+proc onKeyF3 { } {
+# echo "Key F3 was hit"
+
+
+
+# find currently selected object
+#set current [join [all -selected]]
+
+#run over all objects
+set objects [all]
+
+foreach current $objects {
+
+# find its type (needs to be data)
+set type [$current getTypeId]
+
+# check object type
+if {$type == "HxUniformScalarField3"} {
+
+  
+  # find out if it is a data object loaded from a file or derived/processed data
+  if { [$current parameters hasParameter LoadCmd] } {
+    set loadp [$current parameters LoadCmd getValue]
+  } else { 
+    continue
+  }  
+
+$current select
+$current deselect	
+
+set flist [lrange $loadp 12 end]
+
+set files_str [lindex $loadp 11]
+
+set sin [string range $files_str 0 2]
+
+foreach chunk $flist {
+if { [string equal [string range $chunk 0 2] $sin] } {
+set files_str [concat $files_str , $chunk]
+} else {
+set files_str [concat $files_str $chunk]
+}
+}
+
+
+	
+  # fix file name
+  if { [$current parameters hasParameter Filename] } {
+    set filename [$current parameters Filename getValue]
+	if { [string first " " $filename 0] > 0} {
+		theMsg warning [concat "File name(s) " $filename "contains spaces. Try avoiding this!!!"]
+		#continue
+    } else { 
+		# find working directory and change to it  (not needed if using absolute filenames lateron...)
+		set lastfile [string range $files_str [string last $sin $files_str ] end]  
+		set wdir [string range $lastfile 0 [string last / $lastfile]]
+		
+		if { [string first " " $wdir 0] > 0} {
+			theMsg warning [concat "Folder name(s) " $wdir "contains spaces. Try avoiding this!!!"]
+		#	continue
+		}
+		#cd $wdir
+		set filebase [string range $filename [expr [string last / $filename] + 1] end]
+		
+		set file1 $wdir$filebase
+		set file1 [append file1 .tform]
+    }
+  }
+  
+  
+
+    
+  
+  
+  
+  # find working directory and change to it  (not needed if using absolute filenames lateron...)
+  #set sfile [split $file "/"]  
+  #set wdir [lindex $sfile 0]
+  #for {set i 1} {$i < [expr [llength $sfile] - 1] } {incr i} {append wdir "\/" [lindex $sfile $i]}
+  #cd $wdir
+  
+  set tfm [$current getTransform]
+  set voxs [$current getVoxelSize]
+  set bbox [$current getBoundingBox]
+  set transl [$current getTranslation]
+  
+  
+  # adjust for Voxel Size differences (binning...)
+  
+  #for {set j 0} {$j < 16} {set j [expr $j + 4]} {  lset tfm $j [expr [lindex $tfm $j] * [lindex $voxs 0]]  }
+  #for {set j 1} {$j < 16} {set j [expr $j + 4]} {  lset tfm $j [expr [lindex $tfm $j] * [lindex $voxs 1]]  }
+  #for {set j 2} {$j < 16} {set j [expr $j + 4]} {  lset tfm $j [expr [lindex $tfm $j] * [lindex $voxs 2]]  }
+  
+  
+  # adjust for offset when loading data
+  lset tfm 12 [expr [lindex $tfm 12] * [lindex $bbox 0]] 
+  lset tfm 13 [expr [lindex $tfm 13] * [lindex $bbox 2]]
+  lset tfm 14 [expr [lindex $tfm 14] * [lindex $bbox 4]]
+  
+  
+  #echo $voxs
+  #echo $tfm   
+  
+  # export transformation to text file
+  set tfmout [join $tfm ","]
+  
+  
+  if { [file writable $file1] } {
+  echo continue in current directory.
+  } else {
+  set home $::env(HOME)
+  set desktop [append home "/Desktop/"]
+  set file1 $desktop$filebase
+  set file1 [append file1 .tform]
+  }
+  
+  
+  set fileid [open $file1 w]
+  puts $fileid $tfmout
+  puts $fileid [join $bbox ","]  
+  puts $fileid [join $voxs ","]
+  puts $fileid [join $transl ","]
+  puts $fileid [$current LatticeInfo getValue]
+  puts $fileid $files_str
+  close $fileid
+  
+  theMsg warning [concat "Transformation written to " $file1]
+  
+  } else {
+  continue
+  #theMsg warning "Wrong object selected!  Please select a data object."
+  }
+viewer 0 viewAll
+}
+}
