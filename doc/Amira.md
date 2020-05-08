@@ -35,4 +35,10 @@
 
 ![AmiraReg](https://git.embl.de/schorb/bdv_convert/-/raw/master/doc/im/image7.png "Amira3")
 
+- Iterate until you are happy with the registration(s)
+
+![AmiraDone](https://git.embl.de/schorb/bdv_convert/-/raw/master/doc/im/image6.png "Amira4")
+
+- Click in the Amira ProjectView and push ```F3```. This will start the conversion process to BDV.
+
 
