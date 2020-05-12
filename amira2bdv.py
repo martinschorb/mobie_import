@@ -12,6 +12,7 @@ from skimage import io
 
 import xml.etree.ElementTree as ET
 
+from tkinter import Tk,messagebox,filedialog
 
 
 bdv_unit = 'um'
@@ -190,13 +191,10 @@ for tf_file in os.listdir():
                     root = tree.getroot() 
                     # load the file location
                     base_path = root.find('BasePath').text
-                    if base_path=='.': base_path=''
-                   
-                    seqdesc = root.find('SequenceDescription')
-                   
+                    if base_path=='.': base_path=''                   
+                    seqdesc = root.find('SequenceDescription')                   
                     imload = seqdesc.find('ImageLoader')                        
-                    im_format = imload.attrib['format']
-                   
+                    im_format = imload.attrib['format']                   
                     im_desc = imload[0]
                     
                     data_path = '/'.join([os.path.dirname(im_file),base_path, im_desc.text])
@@ -214,9 +212,9 @@ for tf_file in os.listdir():
                     else:
                         # create new xml file in current lints to the original data
                         cwd = os.getcwd()
-
+                        #
                         com_path = os.path.commonpath([cwd,xml_orig])
-                        
+                        #
                         rel_path = os.path.relpath(os.path.dirname(xml_orig),cwd)
                         xml_dir = '/'.join(rel_path.split(os.path.sep))
                         
@@ -236,6 +234,56 @@ for tf_file in os.listdir():
                                                           is_h5=is_h5,
                                                           overwrite_data=False,
                                                           enforce_consistency=True)
+                else:
+                    
+                    cwd = os.getcwd()
+                    
+                    root=Tk()
+                    root.withdraw()
+                    
+                    mb=messagebox.showinfo("Original data not found","Could not find the original data location.\n\n Please select the BDV xml file of the original dataset:\n   - "+xml_orig)
+                    origxml = filedialog.askopenfilename(initialdir = cwd,title = "Select original data file -- "+xml_orig,filetypes = {"XML .xml"})
+                    
+                    root.destroy()                    
+                    
+                    
+                    ov_mode = 'metadata'
+                    tree = ET.parse(origxml)
+                    root = tree.getroot() 
+                    # load the file location
+                    base_path = root.find('BasePath').text
+                    if base_path=='.': base_path=''                   
+                    seqdesc = root.find('SequenceDescription')                   
+                    imload = seqdesc.find('ImageLoader')                        
+                    im_format = imload.attrib['format']                   
+                    im_desc = imload[0]
+                    
+                    
+                        #
+                    com_path = os.path.commonpath([cwd,origxml])
+                    #
+                    rel_path = os.path.relpath(os.path.dirname(origxml),cwd)
+                    xml_dir = '/'.join(rel_path.split(os.path.sep))
+                    
+                    if xml_dir[0]=='/': xml_dir=xml_dir[1:]
+                    
+                    data_path = '/'.join([xml_dir,base_path, im_desc.text])
+                    
+                    is_h5=False
+                    
+                    if outformat=='.h5': is_h5=True
+                    
+                    pybdv.metadata.write_xml_metadata(outname + '.xml', data_path,
+                                                          resolution = view['resolution'],
+                                                          unit = bdv_unit,setup_id = view['setup_id'],
+                                                          timepoint = timept,setup_name = view['setup_name'],
+                                                          attributes = view['attributes'],
+                                                          affine = view['trafo'],
+                                                          overwrite = True,
+                                                          is_h5=is_h5,
+                                                          overwrite_data=False,
+                                                          enforce_consistency=True)
+                    
  
                # outname = tf_file[0:tf_file.find('.xml.bin')]
                # data = [];
