@@ -154,20 +154,20 @@ def write_bdv(outname,data,view,blow_2d=1,outf=outformat):
         
 #            data1=np.concatenate((d1,d1),axis=0)
         
-#        if data.dtype.kind=='i':
-#            if data.dtype.itemsize == 1:
-#                data0 = np.uint8(data-data.min())
-#            elif data.dtype.itemsize == 2:
-#                data0 = np.uint16(data-data.min())
-#            else:
-#                data0 = np.uint16((data-data.min())/data.max()*65535)
-#        else:
-#            data0 = data.copy()
+        if data.dtype.kind=='i':
+            if data.dtype.itemsize == 1:
+                data0 = np.uint8(data-data.min())
+            elif data.dtype.itemsize == 2:
+                data0 = np.uint16(data-data.min())
+            else:
+                data0 = np.uint16((data-data.min())/data.max()*65535)
+        else:
+            data0 = data.copy()
         
         
     print('Converting map '+outname+' into BDV format ' +outf+'.')
     
-    pybdv.make_bdv(data,outfile,downscale_factors,
+    pybdv.make_bdv(data0,outfile,downscale_factors,
                        resolution = view['resolution'],
                        unit = bdv_unit, 
                        setup_id = view['setup_id'],
@@ -225,6 +225,10 @@ mapinfo = list()
 
 for idx,item in enumerate(allitems):
     if item['Type'][0] == '2': ## item is a map
+    
+        if 'Draw' in item.keys():
+            if item['Draw'] == '0': break
+    
         itemname=item['# Item']
         outname = itemname
         
