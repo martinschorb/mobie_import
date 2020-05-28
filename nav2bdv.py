@@ -227,7 +227,7 @@ for idx,item in enumerate(allitems):
     if item['Type'][0] == '2': ## item is a map
     
         if 'Draw' in item.keys():
-            if item['Draw'] == ['0'] : break
+            if item['Draw'] == ['0'] : continue
     
         itemname=item['# Item']
         outname = itemname
