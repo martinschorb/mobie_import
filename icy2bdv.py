@@ -5,11 +5,7 @@ import pyEM as em
 import xml.etree.ElementTree as ET
 
 
-
-# parse command line parameters
-
-
-import sys
+# import sys
 import os
 import glob
 import numpy as np
@@ -17,9 +13,6 @@ import tkinter as tk
 from tkinter import filedialog
 
 import pybdv
-from pybdv import transformations as tf
-
-
 
 
 
@@ -30,8 +23,9 @@ cwd = os.getcwd()
 tkroot = tk.Tk()
 tkroot.withdraw()
 
-
-
+tiles = False
+numtiles = 1
+itemname='-'
 # skip integration into BDV->Icy->BDV as Icy cannot read bdv files (yet).
 
 exist_bdv = tk.messagebox.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?')
@@ -40,12 +34,73 @@ if exist_bdv:
     messg1 = tk.messagebox.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).')
     bdvxml_em = filedialog.askopenfilename(title = 'Select BDV XML of fixed image (EM).', filetypes = [('XML','*.xml')], initialdir = cwd)
     
-    em_root = ET.parse(bdvxml_em)
+    bdv_em_root = ET.parse(bdvxml_em)
     
+    seqdes = bdv_em_root.find('SequenceDescription')
+    vs0 = seqdes.find('ViewSetups')
+    atts = vs0.findall('Attributes')
     
+    vs = vs0.findall('ViewSetup')   
+    
+    itemname = os.path.splitext(os.path.basename(bdvxml_em))[0]
+        
+    for attribute in atts:
+        if 'tile' in attribute.attrib.values():
+            tiles = True
+            numtiles = len(attribute)
+            
+            tile_setup = list()
+            
+            # find tile id for any VS id
+            
+            for viewsetup in vs:
+                vs_id = viewsetup.find('id').text
+                vs_attr = viewsetup.find('attributes')
+                
+                vs_tile = int(vs_attr.find('tile').text)
+                
+                tile_setup.append([vs_tile,vs_id])
+                
+ 
+tiletxt = '.'
 
-emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)')
+if tiles: tiletxt = '. Use the original tiled montage file.'       
 
+messg2 = tk.messagebox.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt)
+
+emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd)
+
+# prepare nav-like entry for merging
+
+mapitem = dict()
+mapitem['MapScaleMat']=['1.0','0.0','0.0','1.0']
+mapitem['MapFile']=[emf]
+mapitem['MapSection']=['0']
+mapitem['MapFramesXY']=['1',str(numtiles)]
+mapitem['MontBinning']=['1']
+mapitem['MapBinning']=['1']
+mapitem['# Item']=itemname
+mapitem['MapWidthHeight']=[0,0]
+mapitem['StageXYZ']=[0,0,0]
+
+
+# merge 
+merged = em.mergemap(mapitem,blendmont=False)
+
+if merged['mapheader']['stacksize'] > 1:
+    tiles=True   
+    
+    tk_root2 = tk.Tk()
+    tk_root2.withdraw()
+    answer = tk.simpledialog.askstring("Which slice?", "Select montage slice")
+    
+    try:
+        slice = int(answer)
+    except ValueError:
+        print("Could not convert input to an integer.")
+
+
+if tiles: messg2 = tk.messagebox.showinfo(title = , message = 'Select fixed image (usually EM)'+tiletxt)
 
 
 
@@ -74,7 +129,7 @@ for child in root_trafo.iter():
 
 M = np.eye(4)
 M_list = list()
-        
+
 for matrix in mat:
     thismat = np.eye(4)
     thismat[0,0] = matrix['m00']
