@@ -157,10 +157,16 @@ def write_bdv(outname,data,view,blow_2d=1,outf=outformat):
         if data.dtype.kind=='i':
             if data.dtype.itemsize == 1:
                 data0 = np.uint8(data-data.min())
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
             elif data.dtype.itemsize == 2:
                 data0 = np.uint16(data-data.min())
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
             else:
                 data0 = np.uint16((data-data.min())/data.max()*65535)
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']='65535'
         else:
             data0 = data.copy()
         
@@ -227,11 +233,8 @@ for idx,item in enumerate(allitems):
     if item['Type'][0] == '2': ## item is a map
     
         if 'Draw' in item.keys():
-<<<<<<< HEAD
+
             if item['Draw'] == ['0']: continue
-=======
-            if item['Draw'] == ['0'] : continue
->>>>>>> 364325524fb92670ce7cb50a36be8d8a230620e4
     
         itemname=item['# Item']
         outname = itemname
@@ -375,7 +378,7 @@ for idx,item in enumerate(allitems):
             
         else:
             # merged image exists
-            data = mergemap['im'].copy()
+            data = mergemap['im']#.copy()
             
             setup_id = 0
             
