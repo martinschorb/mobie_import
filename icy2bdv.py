@@ -144,7 +144,7 @@ if merged['mapheader']['stacksize'] > 1:
     
     try:
         slice = int(answer)
-        im = merged['im'][:,:,slice]
+        data_em = merged['im'][:,:,slice]
         em_str = '_s' + answer
         
     except ValueError:
@@ -155,7 +155,7 @@ if merged['mapheader']['stacksize'] > 1:
         
     
 else:
-    im = merged['im']
+     data_em = merged['im']
     
 tk_root2 = tk.Tk()
 tk_root2.withdraw()
@@ -221,5 +221,31 @@ for matrix in mat:
 
 
 
+# write EM data
 
+
+setup_id = 0
+
+pxs = 1
+
+view=dict()
+                    
+view['resolution'] = [pxs,pxs,pxs]
+view['setup_id'] = setup_id
+view['setup_name'] = 'EM_' +  os.path.basename(emf)
+
+view['attributes'] = dict()                       
+
+view['attributes']['displaysettings'] = dict({'id':setup_id,'color':colors['_W'],'isset':'true'})
+view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
+view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
+
+view['trafo'] = dict()
+view['trafo']['Translation'] = tf_tr
+view['trafo']['MapScaleMat'] = tf_sc
+
+
+
+write_bdv(outname,data,view)
 
