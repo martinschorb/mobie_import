@@ -15,24 +15,71 @@ from tkinter import filedialog
 import pybdv
 
 
+#======================================
+            
+def write_bdv(outname,data,view,blow_2d=1,outf='.h5'):
+    
+    outfile = os.path.join('bdv',outname)   
+        
+    
 
+    ndim = data.ndim
+    if ndim > 2: assert ndim == 3, "Only support 3d"
+        #assert len(resolution) == ndim
+    if ndim < 3: 
+        assert ndim == 2, "Only support 2d"
+        data=np.expand_dims(data.copy(),axis=0)
+        
+        
+#            data1=np.concatenate((d1,d1),axis=0)
+        
+        if data.dtype.kind=='i':
+            if data.dtype.itemsize == 1:
+                data0 = np.uint8(data-data.min())
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+            elif data.dtype.itemsize == 2:
+                data0 = np.uint16(data-data.min())
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+            else:
+                data0 = np.uint16((data-data.min())/data.max()*65535)
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']='65535'
+        else:
+            data0 = data.copy()
+        
+        
+    print('Converting map '+outname+' into BDV format ' +outf+'.')
+    
+    pybdv.make_bdv(data0,outfile,downscale_factors,
+                       resolution = view['resolution'],
+                       unit = bdv_unit, 
+                       setup_id = view['setup_id'],
+                       timepoint = timept,
+                       setup_name = view['setup_name'],
+                       attributes = view['attributes'],
+                       affine = view['trafo'],
+                       overwrite = 'metadata')
+        
 #%%
 
 cwd = os.getcwd()
 
-tkroot = tk.Tk()
-tkroot.withdraw()
+tk_root = tk.Tk()
+tk_root.withdraw()
+tk_root.wm_attributes("-topmost", 1)
 
 tiles = False
 numtiles = 1
 itemname='-'
 # skip integration into BDV->Icy->BDV as Icy cannot read bdv files (yet).
 
-exist_bdv = tk.messagebox.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?')
+exist_bdv = tk.messagebox.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?',parent = tk_root)
 
 if exist_bdv:
-    messg1 = tk.messagebox.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).')
-    bdvxml_em = filedialog.askopenfilename(title = 'Select BDV XML of fixed image (EM).', filetypes = [('XML','*.xml')], initialdir = cwd)
+    messg1 = tk.messagebox.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).',parent = tk_root)
+    bdvxml_em = filedialog.askopenfilename(title = 'Select BDV XML of fixed image (EM).', filetypes = [('XML','*.xml')], initialdir = cwd,parent = tk_root)
     
     bdv_em_root = ET.parse(bdvxml_em)
     
@@ -64,11 +111,10 @@ if exist_bdv:
  
 tiletxt = '.'
 
-if tiles: tiletxt = '. Use the original tiled montage file.'       
+if tiles: tiletxt = '. Use the original tiled (not stitched) montage file.'       
 
-messg2 = tk.messagebox.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt)
-
-emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd)
+messg2 = tk.messagebox.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt,parent = tk_root)
+emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd,parent = tk_root)
 
 # prepare nav-like entry for merging
 
@@ -84,43 +130,61 @@ mapitem['MapWidthHeight']=[0,0]
 mapitem['StageXYZ']=[0,0,0]
 
 
-# merge 
+# merge EM file 
 merged = em.mergemap(mapitem,blendmont=False)
+em_str = ''
+
 
 if merged['mapheader']['stacksize'] > 1:
     tiles=True   
     
     tk_root2 = tk.Tk()
     tk_root2.withdraw()
-    answer = tk.simpledialog.askstring("Which slice?", "Select montage slice")
+    answer = tk.simpledialog.askstring("Which slice?", "Select montage slice (starting from 0),\n if you leave the field empty, the montage will be merged.")
     
     try:
         slice = int(answer)
+        im = merged['im'][:,:,slice]
+        em_str = '_s' + answer
+        
     except ValueError:
-        print("Could not convert input to an integer.")
+        if answer == '':
+            merged = em.mergemap(mapitem,blendmont=True)
+        else:
+            print("Could not convert input to an integer.")
+        
+    
+else:
+    im = merged['im']
+    
+tk_root2 = tk.Tk()
+tk_root2.withdraw()
+tk_root2.wm_attributes("-topmost", 1)
+
+messg3 = tk.messagebox.showinfo(title = 'Select moving (FM) image', message = 'Select image that you want to register (usually FM).',parent = tk_root2)
+fmf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd,parent = tk_root2)
 
 
-if tiles: messg2 = tk.messagebox.showinfo(title = , message = 'Select fixed image (usually EM)'+tiletxt)
+
+
 
 
 
 
 # import icy XMLs
 
-x_emf = mm_em['mergefile']+ os.path.splitext( mm_em['mapfile'])[1] + '_ROIsavedwhenshowonoriginaldata' + '.xml'
-x_trafo = mm_fm['mapfile'] + '_transfo' + '.xml'
+# x_emf = merged['mergefile'] + '_ROIsavedwhenshowonoriginaldata' + '.xml'
+x_trafo = fmf + '_transfo' + '.xml'
 
-if not all([os.path.exists(x_emf),os.path.exists(x_trafo)]):  raise ValueError('Could not find the results of Icy registration. Please re-run.')
+if not os.path.exists(x_trafo):  raise ValueError('Could not find the results of Icy registration. Please re-run.')
     
-root_em = ET.parse(x_emf)
 root_trafo = ET.parse(x_trafo)
-
 
 # extract transformation matrices
 
 mat = []
 if root_trafo.find('MatrixTransformation') == None:
-    root_trafo = ET.parse(glob.glob(mm_fm['mapfile'] + '_transfo' + '*back-up.xml')[-1])
+    root_trafo = ET.parse(glob.glob(fmf + '_transfo' + '*back-up.xml')[-1])
 
 
 for child in root_trafo.iter():
@@ -155,29 +219,7 @@ for matrix in mat:
     
 
 
-# extract registration point positions
 
 
-p_idx = list()
-pts = list()
-
-for child in root_em.iter():
-    pt = np.zeros(2)
-    if child.tag == 'position':
-        
-        for coords in child.getiterator():            
-            if coords.tag == 'pos_x':
-                pt[0] = float(coords.text)
-            elif coords.tag == 'pos_y':
-                pt[1] = float(coords.text)
-            #elif coords.tag == 'pos_z':
-            #    pt[2] = float(coords.text)
-            
-        pts.append(pt)
-            
-    elif child.tag == 'name':
-        p_idx.append(int(child.text[child.text.rfind(' '):]))
-                
-    
 
 
