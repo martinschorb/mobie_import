@@ -2,22 +2,21 @@
 
 import numpy as np
 import pybdv
+import xml.etree.ElementTree as ET
 
 colors=dict()
 
-colors['_R'] = '255 0 0 255'
-colors['_G'] = '0 255 0 255'
-colors['_B'] = '0 0 255 255'
-colors['_W'] = '255 255 255 255'
+colors['R'] = '255 0 0 255'
+colors['G'] = '0 255 0 255'
+colors['B'] = '0 0 255 255'
+colors['W'] = '255 255 255 255'
 colors['BF'] = '255 255 255 255'
-
 
 
 # functions to help playing with BDV 
 
 
-def write_fast_xml(outname,views):
-    
+def write_fast_xml(outname,views):   
     
     
     
@@ -54,13 +53,13 @@ def write_fast_xml(outname,views):
     # make the registration decriptions
     vregs = ET.SubElement(root, 'ViewRegistrations')
     
-    # Some more stuff that BisStitcher has. Maybe it's needed
-    MiV = ET.SubElement(seqdesc, 'MissingViews')
-    Vip = ET.SubElement(root, 'ViewInterestPoints')
-    BBx = ET.SubElement(root, 'BoundingBoxes')
-    PSF = ET.SubElement(root, 'PointSpreadFunctions')
-    StR = ET.SubElement(root, 'StitchingResults')
-    InA = ET.SubElement(root, 'IntensityAdjustments')
+    # Some more stuff that BigStitcher has. Maybe it's needed
+    # MiV = ET.SubElement(seqdesc, 'MissingViews')
+    # Vip = ET.SubElement(root, 'ViewInterestPoints')
+    # BBx = ET.SubElement(root, 'BoundingBoxes')
+    # PSF = ET.SubElement(root, 'PointSpreadFunctions')
+    # StR = ET.SubElement(root, 'StitchingResults')
+    # InA = ET.SubElement(root, 'IntensityAdjustments')
     
     pybdv.metadata._initialize_attributes(viewsets, views[0]['attributes'])    
         
@@ -102,7 +101,7 @@ def write_fast_xml(outname,views):
 
 #======================================
             
-def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None):
+def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,timept=0,bdv_unit='um'):
 
     ndim = data.ndim
     if ndim > 2: assert ndim == 3, "Only support 3d"
@@ -111,29 +110,27 @@ def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None):
         assert ndim == 2, "Only support 2d"
         data=np.expand_dims(data.copy(),axis=0)
         
-        
+
 #            data1=np.concatenate((d1,d1),axis=0)
-        
-        if data.dtype.kind=='i':
-            if data.dtype.itemsize == 1:
-                data0 = np.uint8(data-data.min())
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-            elif data.dtype.itemsize == 2:
-                data0 = np.uint16(data-data.min())
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-            else:
-                data0 = np.uint16((data-data.min())/data.max()*65535)
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']='65535'
-        else:
-            data0 = data.copy()
-        
+    
+    if data.dtype.kind=='i':
+        if data.dtype.itemsize == 1:
+            data1 = np.uint8(data-data.min())
+            view['attributes']['displaysettings']['min']='0'
+            view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+        elif data.dtype.itemsize == 2:
+            data1 = np.uint16(data-data.min())
+            view['attributes']['displaysettings']['min']='0'
+            view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+    else:
+        data1 = np.uint16((data-data.min())/data.max()*65535)
+        view['attributes']['displaysettings']['min']='0'
+        view['attributes']['displaysettings']['max']='65535'
+    
         
    # print('Converting map '+outfile+' into BDV format ' +outf+'.')
     
-    pybdv.make_bdv(data0,outfile,downscale_factors,
+    pybdv.make_bdv(data1,outfile,downscale_factors,
                        resolution = view['resolution'],
                        unit = bdv_unit, 
                        setup_id = view['setup_id'],

@@ -15,7 +15,6 @@ setup(name='bdv_tools',
       author_email='schorb@embl.de',
       license='GPLv3',
       install_requires=[
-      'numpy',
-      'xml'
+      'numpy'
       ],
       ) 

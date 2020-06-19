@@ -12,56 +12,13 @@ import numpy as np
 import tkinter as tk
 from tkinter import filedialog
 
-import pybdv
+from skimage import io
 
 
-#======================================
-            
-def write_bdv(outname,data,view,blow_2d=1,outf='.h5'):
-    
-    outfile = os.path.join('bdv',outname)   
-        
-    
+from pybdv import transformations as tf
 
-    ndim = data.ndim
-    if ndim > 2: assert ndim == 3, "Only support 3d"
-        #assert len(resolution) == ndim
-    if ndim < 3: 
-        assert ndim == 2, "Only support 2d"
-        data=np.expand_dims(data.copy(),axis=0)
-        
-        
-#            data1=np.concatenate((d1,d1),axis=0)
-        
-        if data.dtype.kind=='i':
-            if data.dtype.itemsize == 1:
-                data0 = np.uint8(data-data.min())
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-            elif data.dtype.itemsize == 2:
-                data0 = np.uint16(data-data.min())
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-            else:
-                data0 = np.uint16((data-data.min())/data.max()*65535)
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']='65535'
-        else:
-            data0 = data.copy()
-        
-        
-    print('Converting map '+outname+' into BDV format ' +outf+'.')
-    
-    pybdv.make_bdv(data0,outfile,downscale_factors,
-                       resolution = view['resolution'],
-                       unit = bdv_unit, 
-                       setup_id = view['setup_id'],
-                       timepoint = timept,
-                       setup_name = view['setup_name'],
-                       attributes = view['attributes'],
-                       affine = view['trafo'],
-                       overwrite = 'metadata')
-        
+import bdv_tools as bdv
+
 #%%
 
 cwd = os.getcwd()
@@ -162,14 +119,7 @@ tk_root2.withdraw()
 tk_root2.wm_attributes("-topmost", 1)
 
 messg3 = tk.messagebox.showinfo(title = 'Select moving (FM) image', message = 'Select image that you want to register (usually FM).',parent = tk_root2)
-fmf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd,parent = tk_root2)
-
-
-
-
-
-
-
+fmf = filedialog.askopenfilename(title = 'Select moving image (usually FM)',filetypes = [('images',('*.tif' , '*.tiff','*.png'))], initialdir = cwd,parent = tk_root2)
 
 # import icy XMLs
 
@@ -217,6 +167,74 @@ for matrix in mat:
     
     M = np.dot(M.T,thismat)
     
+fm_mat = M
+
+
+# write FM data
+
+data_fm = io.imread(fmf)
+
+
+setup_id = 0
+
+pxs = 1
+
+view=dict()
+                    
+view['resolution'] = [pxs,pxs,pxs]
+view['setup_id'] = setup_id
+view['setup_name'] = 'FM_' +  os.path.basename(fmf)
+
+view['attributes'] = dict()                       
+
+fmf_base = os.path.splitext(os.path.basename(fmf))[0]
+
+outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
+
+view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+view['attributes']['displaysettings']['Projection_Mode'] = 'Sum'
+
+view['trafo'] = dict()
+
+tf_fm = tf.matrix_to_transformation(M).tolist()  
+view['trafo']['Icy_fixed_transformation'] = tf_fm
+
+if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
+#RGB                    
+    for chidx,ch in enumerate(['R','G','B']):
+        data0 = data_fm[:,:,chidx]
+        view['attributes']['channel'] = dict({'id':int(chidx)})
+        view['attributes']['displaysettings']['min']=data0.min()
+        view['attributes']['displaysettings']['max']=data0.max()
+        
+        view['setup_id'] = setup_id
+        view['setup_name'] = itemname + ch
+        
+        
+        view['attributes']['displaysettings']['id'] = setup_id                        
+        view['attributes']['displaysettings']['color'] = bdv.colors[ch]
+        
+        if data0.max()>0: # ignore empty images
+            bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+            setup_id = setup_id + 1
+else:                    
+# single channel, check if color description in base file name
+    if fmf_base[-3:][fmf_base[-3:].rfind('_')+1:] in bdv.colors.keys(): 
+        view['attributes']['displaysettings']['color'] = bdv.colors[fmf_base[-3:][fmf_base[-3:].rfind('_')+1:]]                   
+      
+        view['attributes']['displaysettings']['min']=data_fm.min()
+        view['attributes']['displaysettings']['max']=data_fm.max()
+        bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+
+
+#     EM
+
+
+em_mat = np.eye(4)
+
+
+if not os.path.exists('bdv'):
+    os.makedirs('bdv')
 
 
 
@@ -236,16 +254,14 @@ view['setup_name'] = 'EM_' +  os.path.basename(emf)
 
 view['attributes'] = dict()                       
 
-view['attributes']['displaysettings'] = dict({'id':setup_id,'color':colors['_W'],'isset':'true'})
+view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
 view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
-view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
 
 view['trafo'] = dict()
-view['trafo']['Translation'] = tf_tr
-view['trafo']['MapScaleMat'] = tf_sc
 
+tf_tr = tf.matrix_to_transformation(em_mat).tolist()  
+view['trafo']['Icy_fixed_transformation'] = tf_tr
 
-
-write_bdv(outname,data,view)
+outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
+bdv.write_bdv(outname,data_em,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
 

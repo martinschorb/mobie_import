@@ -12,7 +12,7 @@ import glob
 import re
 import sys
 import os
-import xml.etree.ElementTree as ET
+
 from skimage import io
 
 import bdv_tools as bdv
@@ -149,7 +149,7 @@ for idx,item in enumerate(allitems):
                 thisview['attributes'] = dict()
                 thisview['attributes']['tile'] = dict({'id':tile_id})
                 
-                thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['_W'],'isset':'true','min':0,'max':65535})
+                thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true','min':0,'max':65535})
                 thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
                 
                 thisview['trafo'] = dict()
@@ -169,12 +169,12 @@ for idx,item in enumerate(allitems):
                     data  = io.imread(imfile)
                     thisview['attributes']['displaysettings']['min']=data.min()
                     thisview['attributes']['displaysettings']['max']=data.max()
-                    bdv.write_bdv(outfile,data,thisview,blow_2d)
+                    bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors)
                 else:
                     views.append(thisview)
                 
             if fast:
-                bdv.write_fast_xml(outfile+'.xml',views)
+                bdv.write_fast_xml(outfile+'.xml',views,downscale_factors)
                 
         elif len(mergemap['im'].shape)==3 and blend==False and not('Imported' in item.keys()):
             # montage tiles in mrc stack       
@@ -198,7 +198,7 @@ for idx,item in enumerate(allitems):
                 thisview['attributes'] = dict()
                 thisview['attributes']['tile'] = dict({'id':tile_id})
                 
-                thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['_W'],'isset':'true'})
+                thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
                 thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
                 
                 thisview['trafo'] = dict()
@@ -215,7 +215,7 @@ for idx,item in enumerate(allitems):
                 data  = mergemap['im'][:,:,tile_id]
                 thisview['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
                 thisview['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
-                bdv.write_bdv(outfile,data,thisview,blow_2d)
+                bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors)
             
             
         else:
@@ -243,7 +243,7 @@ for idx,item in enumerate(allitems):
                 
                 if item['MapMinMaxScale'] == ['0', '0']:
                     #RGB                    
-                    for chidx,ch in enumerate(['_R','_G','_B']):
+                    for chidx,ch in enumerate(['R','G','B']):
                         data0 = data[:,:,chidx]
                         view['attributes']['channel'] = dict({'id':int(chidx)})
                         view['attributes']['displaysettings']['min']=data0.min()
@@ -257,29 +257,29 @@ for idx,item in enumerate(allitems):
                         view['attributes']['displaysettings']['color'] = bdv.colors[ch]
                         
                         if data0.max()>0: # ignore empty images
-                            bdv.write_bdv(outfile,data0,view)
-                        
-                        setup_id = setup_id + 1
-                else:
+                            bdv.write_bdv(outfile,data0,view,downscale_factors)
+                            setup_id = setup_id + 1
+                            
+                else:                    
                     # single channel, check if color description in item label
-                    if itemname[-2:] in bdv.colors.keys(): 
-                        view['attributes']['displaysettings']['color'] = bdv.colors[itemname[-2:]]                   
-                    elif mfbase[-2:] in bdv.colors.keys():
-                        view['attributes']['displaysettings']['color'] = bdv.colors[mfbase[-2:]]
+                    if itemname[-3:][itemname[-3:].rfind('_')+1:] in bdv.colors.keys(): 
+                        view['attributes']['displaysettings']['color'] = bdv.colors[itemname[-3:][itemname[-3:].rfind('_')+1:]]                   
+                    elif mfbase[-3:][mfbase[-3:].rfind('_')+1:] in bdv.colors.keys():
+                        view['attributes']['displaysettings']['color'] = bdv.colors[mfbase[-3:][mfbase[-3:].rfind('_')+1:]]
                         
                     view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
                     view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]   
-                    bdv.write_bdv(outfile,data,view)                
+                    bdv.write_bdv(outfile,data,view,downscale_factors)                
         
                 
             else:
                 
-                view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['_W'],'isset':'true'})
+                view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
                 view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
                 view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
                 view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
                 
-                bdv.write_bdv(outfile,data,view)
+                bdv.write_bdv(outfile,data,view,downscale_factors)
             
         
         
@@ -496,7 +496,7 @@ if tomos:
         data2 = np.swapaxes(data1,0,2)
         
         
-        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d)
+        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors)
       
         mfile.close()
         
