@@ -166,8 +166,17 @@ for matrix in mat:
     M_list.append(thismat)
     
     M = np.dot(M.T,thismat)
+
+
+
+if np.sum(np.abs([M[2,0:2],M[0:2,2]]))<0.00001:
+    #3D
+    M[2,2] = 1
+    M[2,3] = 0
     
-fm_mat = M
+
+# get rid of scientific notation for readability    
+fm_mat = np.round(10000*M)/10000
 
 
 # write FM data
@@ -196,7 +205,7 @@ view['attributes']['displaysettings']['Projection_Mode'] = 'Sum'
 
 view['trafo'] = dict()
 
-tf_fm = tf.matrix_to_transformation(M).tolist()  
+tf_fm = tf.matrix_to_transformation(fm_mat).tolist()  
 view['trafo']['Icy_fixed_transformation'] = tf_fm
 
 if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
@@ -215,7 +224,7 @@ if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
         view['attributes']['displaysettings']['color'] = bdv.colors[ch]
         
         if data0.max()>0: # ignore empty images
-            bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+            bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
             setup_id = setup_id + 1
 else:                    
 # single channel, check if color description in base file name
