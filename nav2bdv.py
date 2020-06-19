@@ -140,6 +140,7 @@ for idx,item in enumerate(allitems):
                 thisview=dict()
                 
                 thisview['file'] = '../'+imbase
+                thisview['OriginalFile'] = imfile
                 
                 thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
                 thisview['resolution'] = [pxs,pxs,pxs]
@@ -195,6 +196,8 @@ for idx,item in enumerate(allitems):
                 thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
                 thisview['setup_id'] = setup_id
                 
+                thisview['OriginalFile'] = mergemap['mapfile']                
+                
                 thisview['attributes'] = dict()
                 thisview['attributes']['tile'] = dict({'id':tile_id})
                 
@@ -229,6 +232,8 @@ for idx,item in enumerate(allitems):
             view['resolution'] = [pxs,pxs,pxs]
             view['setup_id'] = setup_id
             view['setup_name'] = itemname
+            
+            view['OriginalFile'] = mergemap['mergefile']
             
             view['attributes'] = dict()                       
             
@@ -477,7 +482,8 @@ if tomos:
         view['resolution'] = [pxs,pxs,pxs*zstretch]
         view['setup_id'] = setup_id
         view['setup_name'] = 'tomo_'+ base
-                             
+        
+        view['OriginalFile'] = file                     
         
         view['trafo'] = dict()
         view['trafo']['Translation'] = tf_tr

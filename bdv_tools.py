@@ -3,6 +3,7 @@
 import numpy as np
 import pybdv
 import xml.etree.ElementTree as ET
+from pybdv import transformations as tf
 
 colors=dict()
 
@@ -139,4 +140,22 @@ def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,ti
                        attributes = view['attributes'],
                        affine = view['trafo'],
                        overwrite = 'metadata')
+    
+    if 'OriginalFile' in view.keys():
         
+        xml_path = outfile + '.xml'
+        
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        
+        if not root.find('OriginalFile') == None:
+            origf = root.find('OriginalFile')
+        else:
+            origf = ET.SubElement(root, 'OriginalFile')
+            
+        origf.text = view['OriginalFile']
+        
+        # write the xml
+        tf.indent_xml(root)
+        tree = ET.ElementTree(root)
+        tree.write(xml_path)

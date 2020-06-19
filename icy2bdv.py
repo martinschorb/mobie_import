@@ -23,6 +23,10 @@ import bdv_tools as bdv
 
 cwd = os.getcwd()
 
+if not os.path.exists('bdv'):
+    os.makedirs('bdv')
+
+
 tk_root = tk.Tk()
 tk_root.withdraw()
 tk_root.wm_attributes("-topmost", 1)
@@ -34,17 +38,34 @@ itemname='-'
 
 exist_bdv = tk.messagebox.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?',parent = tk_root)
 
+tforms=dict()
+
 if exist_bdv:
     messg1 = tk.messagebox.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).',parent = tk_root)
     bdvxml_em = filedialog.askopenfilename(title = 'Select BDV XML of fixed image (EM).', filetypes = [('XML','*.xml')], initialdir = cwd,parent = tk_root)
     
     bdv_em_root = ET.parse(bdvxml_em)
     
+    if not bdv_em_root.find('OriginalFile')==None:
+        if os.path.exists(bdv_em_root.find('OriginalFile').text):
+            messg4 = tk.messagebox.showwarning(title = 'Original Image File found.', message = 'You should have done the registration with the file:\n'+bdv_em_root.find('OriginalFile').text,parent = tk_root)
+        
+        else:
+            messg4 = tk.messagebox.showwarning(title = 'Original Image File not found!', message = 'I could not find the original image file!\nLet\'s assume you have done the registration with the correct file.',parent = tk_root)
+        
+        
+    else:
+        messg4 = tk.messagebox.showwarning(title = 'No original Image File found!', message = 'I could not find the original image file!\nLet\'s assume you have done the registration with the correct file.',parent = tk_root)
+    
+    
+    
+    
     seqdes = bdv_em_root.find('SequenceDescription')
     vs0 = seqdes.find('ViewSetups')
     atts = vs0.findall('Attributes')
     
-    vs = vs0.findall('ViewSetup')   
+    vs = vs0.findall('ViewSetup')        
+        
     
     itemname = os.path.splitext(os.path.basename(bdvxml_em))[0]
         
@@ -53,67 +74,129 @@ if exist_bdv:
             tiles = True
             numtiles = len(attribute)
             
+            tk_root2 = tk.Tk()
+            tk_root2.withdraw()
+            answer = tk.simpledialog.askstring("Which tile?", "Multiple tiles found! Select tile (starting from 0).")
+            
+            try:
+                slice = int(answer)
+                em_str = '_s' + answer
+                
+            except ValueError:
+                print("Could not convert input to an integer.")
+             
+                
+            
             tile_setup = list()
             
-            # find tile id for any VS id
-            
+            # find tile id for any VS id            
             for viewsetup in vs:
                 vs_id = viewsetup.find('id').text
                 vs_attr = viewsetup.find('attributes')
                 
-                vs_tile = int(vs_attr.find('tile').text)
-                
+                vs_tile = int(vs_attr.find('tile').text)               
+                                
                 tile_setup.append([vs_tile,vs_id])
-                
- 
-tiletxt = '.'
-
-if tiles: tiletxt = '. Use the original tiled (not stitched) montage file.'       
-
-messg2 = tk.messagebox.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt,parent = tk_root)
-emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd,parent = tk_root)
-
-# prepare nav-like entry for merging
-
-mapitem = dict()
-mapitem['MapScaleMat']=['1.0','0.0','0.0','1.0']
-mapitem['MapFile']=[emf]
-mapitem['MapSection']=['0']
-mapitem['MapFramesXY']=['1',str(numtiles)]
-mapitem['MontBinning']=['1']
-mapitem['MapBinning']=['1']
-mapitem['# Item']=itemname
-mapitem['MapWidthHeight']=[0,0]
-mapitem['StageXYZ']=[0,0,0]
-
-
-# merge EM file 
-merged = em.mergemap(mapitem,blendmont=False)
-em_str = ''
-
-
-if merged['mapheader']['stacksize'] > 1:
-    tiles=True   
+            
     
-    tk_root2 = tk.Tk()
-    tk_root2.withdraw()
-    answer = tk.simpledialog.askstring("Which slice?", "Select montage slice (starting from 0),\n if you leave the field empty, the montage will be merged.")
     
-    try:
-        slice = int(answer)
-        data_em = merged['im'][:,:,slice]
-        em_str = '_s' + answer
-        
-    except ValueError:
-        if answer == '':
-            merged = em.mergemap(mapitem,blendmont=True)
-        else:
-            print("Could not convert input to an integer.")
-        
+    # define target setupid (for tiles)
+    
+    target_sid = '0'
+    
+    vregs = bdv_em_root.find('ViewRegistrations')
+    
+    for viewreg in vregs:
+        if viewreg.attrib['setup'] == target_sid:
+            for viewtf in viewreg:
+                tforms[viewtf.find('Name').text] =  list(map(float,viewtf.find('affine').text.split(' ')))
+    
     
 else:
-     data_em = merged['im']
+     
+    tiletxt = '.'
     
+    if tiles: tiletxt = '. Use the original tiled (not stitched) montage file.'       
+    
+    messg2 = tk.messagebox.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt,parent = tk_root)
+    emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd,parent = tk_root)
+    
+    # prepare nav-like entry for merging
+    
+    mapitem = dict()
+    mapitem['MapScaleMat']=['1.0','0.0','0.0','1.0']
+    mapitem['MapFile']=[emf]
+    mapitem['MapSection']=['0']
+    mapitem['MapFramesXY']=['1',str(numtiles)]
+    mapitem['MontBinning']=['1']
+    mapitem['MapBinning']=['1']
+    mapitem['# Item']=itemname
+    mapitem['MapWidthHeight']=[0,0]
+    mapitem['StageXYZ']=[0,0,0]
+    
+    
+    # merge EM file 
+    merged = em.mergemap(mapitem,blendmont=False)
+    em_str = ''
+    
+    
+    if merged['mapheader']['stacksize'] > 1:
+        tiles=True   
+        
+        tk_root2 = tk.Tk()
+        tk_root2.withdraw()
+        answer = tk.simpledialog.askstring("Which slice?", "Select EM montage slice (starting from 0),\n if you leave the field empty, the montage will be merged.")
+        
+        try:
+            slice = int(answer)
+            data_em = merged['im'][:,:,slice]
+            em_str = '_s' + answer
+            
+        except ValueError:
+            if answer == '':
+                merged = em.mergemap(mapitem,blendmont=True)
+            else:
+                print("Could not convert input to an integer.")
+            
+        
+    else:
+        data_em = merged['im']    
+        
+        em_mat = np.eye(4)
+        
+        # write EM data
+        
+        
+        setup_id = 0
+        
+        pxs = 1
+        
+        view=dict()
+                            
+        view['resolution'] = [pxs,pxs,pxs]
+        view['setup_id'] = setup_id
+        view['setup_name'] = 'EM_' +  os.path.basename(emf)
+        
+        view['OriginalFile'] = emf
+        
+        view['attributes'] = dict()                       
+        
+        view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+        view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+        
+        view['trafo'] = dict()
+        
+        tf_tr = tf.matrix_to_transformation(em_mat).tolist()  
+        view['trafo']['Icy_fixed_transformation'] = tf_tr
+        
+        outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
+        bdv.write_bdv(outname,data_em,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+        
+        
+            
+            
+            
+            
 tk_root2 = tk.Tk()
 tk_root2.withdraw()
 tk_root2.wm_attributes("-topmost", 1)
@@ -203,10 +286,18 @@ outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
 view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
 view['attributes']['displaysettings']['Projection_Mode'] = 'Sum'
 
-view['trafo'] = dict()
+view['OriginalFile'] = fmf
+
+view['trafo'] = tforms
+
+tfkey = 'Icy_fixed_transformation_0'
+
+while tfkey in view['trafo'].keys():
+    tfkey = tfkey[:tfkey.rfind('_')+1] + str(int(tfkey[tfkey.rfind('_')+1:])+1)
+
 
 tf_fm = tf.matrix_to_transformation(fm_mat).tolist()  
-view['trafo']['Icy_fixed_transformation'] = tf_fm
+view['trafo'][tfkey] = tf_fm
 
 if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
 #RGB                    
@@ -217,7 +308,7 @@ if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
         view['attributes']['displaysettings']['max']=data0.max()
         
         view['setup_id'] = setup_id
-        view['setup_name'] = itemname + ch
+        view['setup_name'] = fmf_base + '_' + ch
         
         
         view['attributes']['displaysettings']['id'] = setup_id                        
@@ -235,42 +326,4 @@ else:
         view['attributes']['displaysettings']['max']=data_fm.max()
         bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
 
-
-#     EM
-
-
-em_mat = np.eye(4)
-
-
-if not os.path.exists('bdv'):
-    os.makedirs('bdv')
-
-
-
-
-# write EM data
-
-
-setup_id = 0
-
-pxs = 1
-
-view=dict()
-                    
-view['resolution'] = [pxs,pxs,pxs]
-view['setup_id'] = setup_id
-view['setup_name'] = 'EM_' +  os.path.basename(emf)
-
-view['attributes'] = dict()                       
-
-view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
-view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-view['trafo'] = dict()
-
-tf_tr = tf.matrix_to_transformation(em_mat).tolist()  
-view['trafo']['Icy_fixed_transformation'] = tf_tr
-
-outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
-bdv.write_bdv(outname,data_em,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
 
