@@ -39,6 +39,7 @@ itemname='-'
 exist_bdv = tk.messagebox.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?',parent = tk_root)
 
 tforms=dict()
+tfm_TilePosition = None
 
 if exist_bdv:
     messg1 = tk.messagebox.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).',parent = tk_root)
@@ -91,18 +92,21 @@ if exist_bdv:
             
             # find tile id for any VS id            
             for viewsetup in vs:
-                vs_id = viewsetup.find('id').text
+                vs_id = int(viewsetup.find('id').text)
                 vs_attr = viewsetup.find('attributes')
                 
                 vs_tile = int(vs_attr.find('tile').text)               
                                 
                 tile_setup.append([vs_tile,vs_id])
             
-    
+            tts = np.array(tile_setup)
     
     # define target setupid (for tiles)
     
-    target_sid = '0'
+    if tiles:
+        target_sid = 
+    else:
+        target_sid = '0'
     
     vregs = bdv_em_root.find('ViewRegistrations')
     
@@ -113,7 +117,8 @@ if exist_bdv:
     
     
 else:
-     
+    pxs = 1
+    
     tiletxt = '.'
     
     if tiles: tiletxt = '. Use the original tiled (not stitched) montage file.'       
@@ -148,15 +153,67 @@ else:
         answer = tk.simpledialog.askstring("Which slice?", "Select EM montage slice (starting from 0),\n if you leave the field empty, the montage will be merged.")
         
         try:
-            slice = int(answer)
-            data_em = merged['im'][:,:,slice]
-            em_str = '_s' + answer
+            tslice = int(answer)
             
         except ValueError:
             if answer == '':
                 merged = em.mergemap(mapitem,blendmont=True)
             else:
-                print("Could not convert input to an integer.")
+                print("Could not convert input to an integer.") 
+            
+        
+        em_str = '_s' + answer
+                
+        setup_id=0
+        tile_id=0
+
+        numslices = merged['im'].shape[2]
+        
+        print(numslices)
+        
+        digits = len(str(numslices))
+        outname = os.path.join('bdv','EM_' + os.path.splitext(os.path.basename(emf))[0])
+        
+        for tile_id in range(numslices): 
+            data_em = merged['im'][:,:,tile_id]
+            thisview=dict()                  
+
+            thisview['size'] = [1,merged['mapheader']['xsize'], merged['mapheader']['ysize']]
+            thisview['resolution'] = [pxs,pxs,pxs]
+            thisview['setup_name'] = 'EM_' + os.path.basename(emf) + '_tile'+('{:0'+str(digits)+'}').format(tile_id)
+            thisview['setup_id'] = setup_id
+            
+            thisview['OriginalFile'] = merged['mapfile']                
+            
+            thisview['attributes'] = dict()
+            thisview['attributes']['tile'] = dict({'id':tile_id})
+            
+            thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+            thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+            
+            thisview['trafo'] = dict()
+
+            
+            mat_tpos = np.concatenate(([[1,0],[0,1]],[[0,merged['tilepx'][tile_id][0]],[0,merged['mergeheader']['ysize']-merged['mapheader']['ysize']-merged['tilepx'][tile_id][1]]]),axis=1)
+            mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
+
+            thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
+            
+            if tile_id == tslice: tfm_TilePosition = thisview['trafo']['TilePosition']
+            
+            setup_id = setup_id+1
+            
+            thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+            thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+            
+            
+            bdv.write_bdv(outname,data_em,thisview,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+
+            
+            
+            
+                         
+        
             
         
     else:
@@ -167,15 +224,13 @@ else:
         # write EM data
         
         
-        setup_id = 0
-        
-        pxs = 1
+        setup_id = 0        
         
         view=dict()
                             
         view['resolution'] = [pxs,pxs,pxs]
         view['setup_id'] = setup_id
-        view['setup_name'] = 'EM_' +  os.path.basename(emf)
+        view['setup_name'] = 'EM_' + em_str + os.path.basename(emf)
         
         view['OriginalFile'] = emf
         
@@ -248,7 +303,7 @@ for matrix in mat:
     
     M_list.append(thismat)
     
-    M = np.dot(M.T,thismat)
+    M = np.dot(thismat,M)
 
 
 
@@ -295,6 +350,7 @@ tfkey = 'Icy_fixed_transformation_0'
 while tfkey in view['trafo'].keys():
     tfkey = tfkey[:tfkey.rfind('_')+1] + str(int(tfkey[tfkey.rfind('_')+1:])+1)
 
+if not tfm_TilePosition == None: view['trafo']['TilePosition'] = tfm_TilePosition
 
 tf_fm = tf.matrix_to_transformation(fm_mat).tolist()  
 view['trafo'][tfkey] = tf_fm
