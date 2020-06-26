@@ -9,6 +9,22 @@ proc onKeyF3 { } {
 # find currently selected object
 #set current [join [all -selected]]
 
+
+# create a file listing all transforms
+set home $::env(HOME)
+set desktop [append home "/Desktop/"]
+
+set time [clock seconds]
+set timestamp [clock format $time -format %y%m%d-%H%M%S]
+
+set outfile_list [append timestamp "_amira2bdv.list"]
+
+set file0 $desktop$outfile_list
+set fileid0 [open $file0 w]
+
+# run through Amira Objects
+
+
 #run over all objects
 set objects [all]
 
@@ -111,23 +127,25 @@ set files_str [concat $files_str $chunk]
   if { [file writable $file1] } {
   echo continue in current directory.
   } else {
-  set home $::env(HOME)
-  set desktop [append home "/Desktop/"]
+
   set file1 $desktop$filebase
   set file1 [append file1 .tform]
   }
   
   
-  set fileid [open $file1 w]
-  puts $fileid $tfmout
-  puts $fileid [join $bbox ","]  
-  puts $fileid [join $voxs ","]
-  puts $fileid [join $transl ","]
-  puts $fileid [$current LatticeInfo getValue]
-  puts $fileid $files_str
-  close $fileid
+  set fileid1 [open $file1 w]
+  puts $fileid1 $tfmout
+  puts $fileid1 [join $bbox ","]  
+  puts $fileid1 [join $voxs ","]
+  puts $fileid1 [join $transl ","]
+  puts $fileid1 [$current LatticeInfo getValue]
+  puts $fileid1 $files_str
+  close $fileid1
   
-  theMsg warning [concat "Transformation written to " $file1]
+ # theMsg warning [concat "Transformation written to " $file1]
+  
+  puts $fileid0 $file1
+  
   
   } else {
   continue
@@ -135,4 +153,6 @@ set files_str [concat $files_str $chunk]
   }
 viewer 0 viewAll
 }
+close $fileid0
+theMsg warning [concat "Transformation data written to " $file0]
 }

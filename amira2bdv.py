@@ -9,6 +9,8 @@ from pybdv import transformations as tf
 import mrcfile as mrc
 import os
 from skimage import io
+import sys
+from shutil import copy
 
 import xml.etree.ElementTree as ET
 
@@ -41,24 +43,52 @@ colors['BF'] = '255 255 255 255'
 
 outformat='.h5'
 
-downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4]))
+downscale_factors = list(([2,2,2],[2,2,2],[2,2,2],[2,2,2],[2,2,2],[2,2,2]))
 blow_2d = 1
 
-
-#%%
-#=======================================
 
 outname = os.path.basename(os.getcwd())
 
 setup_id = -1
 
 
-for tf_file in os.listdir():
+dirname = 'bdv_amira'
+
+
+#%%
+# filelist =  os.listdir()
+
+# list_file = sys.argv[1]
+root0=Tk()
+root0.withdraw()
+root0.wm_attributes("-topmost", 1)
+
+mb1=messagebox.showinfo("Please select Amira output","Please select the Amira output file to start the conversion.\n",parent = root0)
+list_file = filedialog.askopenfilename(initialdir = outname,title = "Select Amira output file",filetypes = {"Transform .list"}, parent = root0)
+                   
+
+#%%
+
+
+if os.path.exists(list_file):
+    with open(list_file) as f:
+        filelist = f.read().splitlines()
+else:
+    print('ERROR: transformation list file not found!!')
+    exit()
+
+if not os.path.exists(dirname):
+    os.makedirs(dirname)
+    
+for tf_file in filelist:
     # work on all tform files exported from Amira
     if not tf_file[-5:] == 'tform':
         continue
     else:
         setup_id = setup_id + 1
+        
+        print(' ----------------------------------------------\n      Converting image transform: '+tf_file)
+        
         
         # set output
         if split_files:
@@ -153,7 +183,7 @@ for tf_file in os.listdir():
        
         
         
-        outfile = os.path.join('bdv',outname+outformat) 
+        outfile = os.path.join(dirname,outname+outformat) 
         
         
         data = []
@@ -210,18 +240,25 @@ for tf_file in os.listdir():
                         
                         
                     else:
-                        # create new xml file in current lints to the original data
+                        # create new xml file in current directory linking to the original data
                         cwd = os.getcwd()
                         #
-                        com_path = os.path.commonpath([cwd,xml_orig])
+                        outname = os.path.join(cwd,dirname,os.path.basename(im_file[0:im_file.find('.xml.bin')]+'_amira'))
                         #
-                        rel_path = os.path.relpath(os.path.dirname(xml_orig),cwd)
+                        try:
+                            com_path = os.path.commonpath([cwd,xml_orig])
+                            rel_path = os.path.relpath(os.path.dirname(xml_orig),cwd)
+                        except ValueError:
+                            rel_path = "."
+                            im_orig = os.path.splitext(xml_orig)[0]+outformat
+                            newim =  os.path.join(cwd,dirname,os.path.basename(im_orig))
+                            if not os.path.exists(newim): copy(im_orig,newim)
+                            
                         xml_dir = '/'.join(rel_path.split(os.path.sep))
                         
                         if xml_dir[0]=='/': xml_dir=xml_dir[1:]
                         
-                        data_path = '/'.join([xml_dir,base_path, im_desc.text])
-                        
+                        data_path = '/'.join([xml_dir,dirname,base_path, im_desc.text])                        
                                                 
                         
                     pybdv.metadata.write_xml_metadata(outname + '.xml', data_path,

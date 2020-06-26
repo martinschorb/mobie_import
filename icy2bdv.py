@@ -11,6 +11,9 @@ import glob
 import numpy as np
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import simpledialog
+from tkinter import messagebox as mb
+
 
 from skimage import io
 
@@ -21,10 +24,16 @@ import bdv_tools as bdv
 
 #%%
 
+
+
+
+
 cwd = os.getcwd()
 
-if not os.path.exists('bdv'):
-    os.makedirs('bdv')
+dirname = 'bdv_icy'
+
+if not os.path.exists(dirname):
+    os.makedirs(dirname)
 
 
 tk_root = tk.Tk()
@@ -36,27 +45,27 @@ numtiles = 1
 itemname='-'
 # skip integration into BDV->Icy->BDV as Icy cannot read bdv files (yet).
 
-exist_bdv = tk.messagebox.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?',parent = tk_root)
+exist_bdv = mb.askyesno(title = 'Select input files',message='Is the fixed image (EM) already registered in BDV?',parent = tk_root)
 
 tforms=dict()
 tfm_TilePosition = None
 
 if exist_bdv:
-    messg1 = tk.messagebox.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).',parent = tk_root)
+    messg1 = mb.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).',parent = tk_root)
     bdvxml_em = filedialog.askopenfilename(title = 'Select BDV XML of fixed image (EM).', filetypes = [('XML','*.xml')], initialdir = cwd,parent = tk_root)
     
     bdv_em_root = ET.parse(bdvxml_em)
     
     if not bdv_em_root.find('OriginalFile')==None:
         if os.path.exists(bdv_em_root.find('OriginalFile').text):
-            messg4 = tk.messagebox.showwarning(title = 'Original Image File found.', message = 'You should have done the registration with the file:\n'+bdv_em_root.find('OriginalFile').text,parent = tk_root)
+            messg4 = mb.showwarning(title = 'Original Image File found.', message = 'You should have done the registration with the file:\n'+bdv_em_root.find('OriginalFile').text,parent = tk_root)
         
         else:
-            messg4 = tk.messagebox.showwarning(title = 'Original Image File not found!', message = 'I could not find the original image file!\nLet\'s assume you have done the registration with the correct file.',parent = tk_root)
+            messg4 = mb.showwarning(title = 'Original Image File not found!', message = 'I could not find the original image file!\nLet\'s assume you have done the registration with the correct file.',parent = tk_root)
         
         
     else:
-        messg4 = tk.messagebox.showwarning(title = 'No original Image File found!', message = 'I could not find the original image file!\nLet\'s assume you have done the registration with the correct file.',parent = tk_root)
+        messg4 = mb.showwarning(title = 'No original Image File found!', message = 'I could not find the original image file!\nLet\'s assume you have done the registration with the correct file.',parent = tk_root)
     
     
     
@@ -77,7 +86,7 @@ if exist_bdv:
             
             tk_root2 = tk.Tk()
             tk_root2.withdraw()
-            answer = tk.simpledialog.askstring("Which tile?", "Multiple tiles found! Select tile (starting from 0).")
+            answer = simpledialog.askstring("Which tile?", "Multiple tiles found! Select tile (starting from 0).")
             
             try:
                 slice = int(answer)
@@ -104,7 +113,7 @@ if exist_bdv:
     # define target setupid (for tiles)
     
     if tiles:
-        target_sid = 
+        target_sid = '1'
     else:
         target_sid = '0'
     
@@ -123,7 +132,7 @@ else:
     
     if tiles: tiletxt = '. Use the original tiled (not stitched) montage file.'       
     
-    messg2 = tk.messagebox.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt,parent = tk_root)
+    messg2 = mb.showinfo(title = 'Select fixed (EM) image', message = 'Select fixed image (usually EM)'+tiletxt,parent = tk_root)
     emf = filedialog.askopenfilename(title = 'Select fixed image (usually EM)',filetypes = [('images',('*.tif' , '*.tiff', '*.idoc','*.mrc','*.map','*.st'))], initialdir = cwd,parent = tk_root)
     
     # prepare nav-like entry for merging
@@ -150,7 +159,7 @@ else:
         
         tk_root2 = tk.Tk()
         tk_root2.withdraw()
-        answer = tk.simpledialog.askstring("Which slice?", "Select EM montage slice (starting from 0),\n if you leave the field empty, the montage will be merged.")
+        answer = simpledialog.askstring("Which slice?", "Select EM montage slice (starting from 0),\n if you leave the field empty, the montage will be merged.")
         
         try:
             tslice = int(answer)
@@ -172,7 +181,7 @@ else:
         print(numslices)
         
         digits = len(str(numslices))
-        outname = os.path.join('bdv','EM_' + os.path.splitext(os.path.basename(emf))[0])
+        outname = os.path.join(dirname,'EM_' + os.path.splitext(os.path.basename(emf))[0])
         
         for tile_id in range(numslices): 
             data_em = merged['im'][:,:,tile_id]
@@ -244,7 +253,7 @@ else:
         tf_tr = tf.matrix_to_transformation(em_mat).tolist()  
         view['trafo']['Icy_fixed_transformation'] = tf_tr
         
-        outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
+        outname = os.path.join(dirname,os.path.splitext(view['setup_name'])[0])
         bdv.write_bdv(outname,data_em,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
         
         
@@ -256,7 +265,7 @@ tk_root2 = tk.Tk()
 tk_root2.withdraw()
 tk_root2.wm_attributes("-topmost", 1)
 
-messg3 = tk.messagebox.showinfo(title = 'Select moving (FM) image', message = 'Select image that you want to register (usually FM).',parent = tk_root2)
+messg3 = mb.showinfo(title = 'Select moving (FM) image', message = 'Select image that you want to register (usually FM).',parent = tk_root2)
 fmf = filedialog.askopenfilename(title = 'Select moving image (usually FM)',filetypes = [('images',('*.tif' , '*.tiff','*.png'))], initialdir = cwd,parent = tk_root2)
 
 # import icy XMLs
@@ -336,7 +345,7 @@ view['attributes'] = dict()
 
 fmf_base = os.path.splitext(os.path.basename(fmf))[0]
 
-outname = os.path.join('bdv',os.path.splitext(view['setup_name'])[0])
+outname = os.path.join(dirname,os.path.splitext(view['setup_name'])[0])
 
 view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
 view['attributes']['displaysettings']['Projection_Mode'] = 'Sum'
