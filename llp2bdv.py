@@ -9,6 +9,7 @@ import sqlite3
 import numpy as np
 import os
 
+from pybdv import transformations as tf
 
 import bdv_tools as bdv
 
@@ -40,6 +41,7 @@ if not os.path.exists(dirname):
 
 db = sqlite3.connect('llp.sqlite')
 c=db.cursor()
+c.execute('SELECT * FROM image_item')
 
 keys = [description[0] for description in c.description]
 
@@ -85,7 +87,11 @@ if int_av:
 
 # process each mag separately
     
-for thismag in np.unique(mags):
+#for thismag in np.unique(mags):
+
+thismag=1000
+if thismag==1000:
+    
        
     itemname = basename + '_'+str(thismag)+'x'
      
@@ -111,7 +117,8 @@ for thismag in np.unique(mags):
 
 
         thisview['size'] = [1,thisim['image_width_px'],thisim['image_height_px']]
-        thisview['resolution'] = list(np.repeat(0.001/thisim['pixel_per_nm'],3))
+        pxs = 0.001/thisim['pixel_per_nm']
+        thisview['resolution'] = [pxs,pxs,pxs]
         thisview['setup_name'] = itemname+'_t'+('{:0'+str(digits)+'}').format(tile_id)
         thisview['setup_id'] = setup_id
         
@@ -126,10 +133,29 @@ for thismag in np.unique(mags):
         
         #TODO transformation
         
+        # 1)  The scale and rotation information       
+
         
+        th = np.radians(thisim['image_degree'])
+        ct = np.cos(th)
+        st = np.sin(th)
         
+        rotmat = pxs * np.array([[ct,st,0],[-st,ct,0],[0,0,1]])
+        mat_r = np.concatenate((rotmat,[[0],[0],[0]]),axis=1)                
+        mat_r = np.concatenate((mat_r,[[0,0,0,1]]))
         
+        tf_sc = tf.matrix_to_transformation(mat_r).tolist()
         
+        # 2) The translation matrix to position the object in space (lower left corner)
+        
+        mat_t = np.concatenate((np.eye(2),[[0,thisim['location_x_nm']/1000],[0,thisim['location_y_nm']/1000]]),axis=1)
+        mat_t = np.concatenate((mat_t,[[0,0,1,0],[0,0,0,1]]))
+        
+        tf_tr = tf.matrix_to_transformation(mat_t).tolist()
+
+        
+
+
         
         
         
