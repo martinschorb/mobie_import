@@ -27,7 +27,7 @@ timept = 0
 
 outformat='.h5'
 
-downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4]))
+downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 blow_2d = 1
 
 # from the configuration in our Tecnai, will be used if no specific info can be found
