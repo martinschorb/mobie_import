@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='bdv_tools',
-      version='20200626',
+      version='20200630',
       py_modules=['bdv_tools'],
       description='Tools to interact with BigDataViewer.',
       long_description=long_description,
