@@ -102,7 +102,7 @@ if exist_bdv:
             # find tile id for any VS id            
             for viewsetup in vs:
                 vs_id = int(viewsetup.find('id').text)
-                vs_attr = viewsetup.find('attributes')
+                vs_attr = viewsetup.find('Attributes')
                 
                 vs_tile = int(vs_attr.find('tile').text)               
                                 

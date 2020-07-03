@@ -33,6 +33,13 @@ blow_2d = 1
 # from the configuration in our Tecnai, will be used if no specific info can be found
 ta_angle = -11.3 
 
+dirname0 = 'bdv'
+
+tomodir = 'tomo'
+recdir = 'tomo_rec'
+
+
+cluster = False
 
 
 #%%
@@ -66,8 +73,15 @@ def smallestcorner(corners):
 navlines = em.loadtext(navfile)
 allitems = em.fullnav(navlines)
 
-if not os.path.exists('bdv'):
-    os.makedirs('bdv')
+dirname = dirname0    
+
+if tomos:
+    dirname=os.path.join(dirname0,'maps')  
+
+if not os.path.exists(dirname):
+    os.makedirs(dirname)
+  
+    
 
 mapinfo = list()
 
@@ -86,7 +100,7 @@ for idx,item in enumerate(allitems):
         
         print('Processing map '+itemname+' to be added to BDV.')                      
         
-        outfile = os.path.join('bdv',outname)
+        outfile = os.path.join(dirname,outname)
                 
         mergemap = em.mergemap(item,blendmont=blend)              
         
@@ -281,8 +295,12 @@ for idx,item in enumerate(allitems):
                 
                 view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
                 view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-                view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
-                view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
+                
+                if os.path.exists(outfile+'.xml'):
+                    view['attributes']['displaysettings'] = bdv.get_displaysettings(outfile)
+                else:
+                    view['attributes']['displaysettings']['min']=data.min()#item['MapMinMaxScale'][0]
+                    view['attributes']['displaysettings']['max']=data.max()#item['MapMinMaxScale'][1]
                 
                 bdv.write_bdv(outfile,data,view,downscale_factors)
             
@@ -299,6 +317,14 @@ for idx,item in enumerate(allitems):
 print('done writing maps')       
             
 if tomos:
+    
+    dirname=os.path.join(dirname0,'tomos')  
+    
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)  
+    
+    
+    
     print('starting to convert the tomograms')
     zstretch = blow_2d
     #factor to inflate tomograms in z
@@ -307,18 +333,18 @@ if tomos:
     
     filelist = list()
     
-    for file in glob.iglob('**/*.rec', recursive=True):   
+    for file in glob.iglob(tomodir+'/*.rec', recursive=True):   
         dual = False
         
-        base = file[:file.index('.rec')]
+        base = os.path.splitext(file)[0]
         
         if base[-1]=='a' or  base[-1]=='b':
             if os.path.exists(base[:-1]+'.rec'):
                 print('Dual axis reconstruction '+base[:-1]+' found, will skip individual axes.')
                 continue
                 
-        outname = base
-        outfile = os.path.join('bdv',outname) 
+        outname = os.path.basename(base)
+        outfile = os.path.join(dirname,outname) 
         
         base1 = os.path.basename(base)
         parts = re.split('\.|_|\-|;| |,',base1)
@@ -327,26 +353,28 @@ if tomos:
             if item.isnumeric():
                 base_idx = item
         
-        if os.path.exists(base+'.st.mdoc'):
-            mdocfile = base+'.st.mdoc'
-        elif os.path.exists(base+'b.st.mdoc'):
+        tomobase = os.path.join(tomodir,base)
+        
+        if os.path.exists(tomobase+'.st.mdoc'):
+            mdocfile = tomobase+'.st.mdoc'
+        elif os.path.exists(tomobase+'b.st.mdoc'):
             dual = True
-            mdocfile = base+'b.st.mdoc'
-        elif os.path.exists(base+'a.st.mdoc'):
-            mdocfile = base+'a.st.mdoc'
+            mdocfile = tomobase+'b.st.mdoc'
+        elif os.path.exists(tomobase+'a.st.mdoc'):
+            mdocfile = tomobase+'a.st.mdoc'
         else:
             # extract stage position from tiltfile
             mdocfile=''
             
 
-        if os.path.exists(base+'.st'):
-            tiltfile = base+'.st'
-        elif os.path.exists(base+'b.st'):
+        if os.path.exists(tomobase+'.st'):
+            tiltfile = tomobase+'.st'
+        elif os.path.exists(tomobase+'b.st'):
             dual = True
-            tiltfile = base+'b.st'
+            tiltfile = tomobase+'b.st'
             
-        elif os.path.exists(base+'a.st'):
-            tiltfile = base+'a.st'
+        elif os.path.exists(tomobase+'a.st'):
+            tiltfile = tomobase+'a.st'
         else:
             print('No tilt stack or mdoc found for tomogram ' + base +'. Skipping it.')
             continue
@@ -481,7 +509,7 @@ if tomos:
                             
         view['resolution'] = [pxs,pxs,pxs*zstretch]
         view['setup_id'] = setup_id
-        view['setup_name'] = 'tomo_'+ base
+        view['setup_name'] = 'tomo_'+ os.path.basename(base)
         
         view['OriginalFile'] = file                     
         
@@ -490,19 +518,34 @@ if tomos:
         view['trafo']['RotScale'] = tf_sc
         
         view['attributes'] = dict()
-        data = mfile.data
         
+        view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+        view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+        view['attributes']['displaysettings']['min']=data.min()
+        view['attributes']['displaysettings']['max']=data.max()
         
-        # check if volume is rotated 
-        if data.shape[0]/data.shape[1]>5:
-            data = np.swapaxes(data,0,1)
 
-        data0 = np.swapaxes(data,0,2)
-        data1 = np.fliplr(data0)
-        data2 = np.swapaxes(data1,0,2)
         
+        if cluster:
+            view_xml = 'convert_'+base1+'.xml'
+            bdv.dict2xml(view,view_xml)
+            print('Submitting conversion of tomogram '+base1+' to cluster.')
+            
+            
+            
+            
+        else:
+            data = mfile.data        
         
-        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors)
+            # check if volume is rotated 
+            if data.shape[0]/data.shape[1]>5:
+                data = np.swapaxes(data,0,1)
+    
+                data0 = np.swapaxes(data,0,2)
+                data1 = np.fliplr(data0)
+                data2 = np.swapaxes(data1,0,2)
+          
+                bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster)
       
         mfile.close()
         

@@ -102,17 +102,16 @@ def write_fast_xml(outname,views):
 
 #======================================
             
-def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,timept=0,bdv_unit='um'):
+def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,timept=0,bdv_unit='um',cluster=False):
 
     ndim = data.ndim
     if ndim > 2: assert ndim == 3, "Only support 3d"
         #assert len(resolution) == ndim
     if ndim < 3: 
         assert ndim == 2, "Only support 2d"
-        data=np.expand_dims(data.copy(),axis=0)
+        data=np.expand_dims(data,axis=0)
         
-
-#            data1=np.concatenate((d1,d1),axis=0)
+    data1=data
     
     if data.dtype.kind=='i':
         if data.dtype.itemsize == 1:
@@ -123,13 +122,16 @@ def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,ti
             data1 = np.uint16(data-data.min())
             view['attributes']['displaysettings']['min']='0'
             view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-    else:
+    elif not data.dtype.kind=='u':
         data1 = np.uint16((data-data.min())/data.max()*65535)
         view['attributes']['displaysettings']['min']='0'
         view['attributes']['displaysettings']['max']='65535'
-    
+    elif data.dtype.itemsize > 2:
+        data1 = np.uint16((data-data.min())/data.max()*65535)
+        view['attributes']['displaysettings']['min']='0'
+        view['attributes']['displaysettings']['max']='65535'
         
-   # print('Converting map '+outfile+' into BDV format ' +outf+'.')
+    print('Converting '+outfile+' into BDV format ' +outfile+'.')
     
     pybdv.make_bdv(data1,outfile,downscale_factors,
                        resolution = view['resolution'],
@@ -159,3 +161,39 @@ def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,ti
         tf.indent_xml(root)
         tree = ET.ElementTree(root)
         tree.write(xml_path)
+        
+        
+def get_displaysettings(outfile):
+    root = ET.parse(outfile+'.xml')
+    seqdes = root.find('SequenceDescription')
+    vs0 = seqdes.find('ViewSetups')
+    atts = vs0.findall('Attributes')
+    
+    for attribute in atts:
+        if 'displaysettings' in attribute.attrib.values():
+            ds = attribute.find('Displaysettings')
+            
+    
+    dsv = dict()
+    
+    for dset in ds:
+        dsv[dset.tag] = dset.text
+        
+    return dsv
+        
+def dict2xml(indict,outfile,root=None):
+    
+    if root==None: root = ET.Element('py_dict')
+    
+    for key,val in indict.items():
+        cp = ET.SubElement(root,key)
+        
+        if type(val)==dict:
+            cp=dict2xml(val,root=cp)
+        else:
+            cp.text = str(val)
+        
+    tf.indent_xml(root)
+    tree = ET.ElementTree(root)
+        
+        
