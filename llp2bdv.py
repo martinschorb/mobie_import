@@ -95,7 +95,7 @@ if thismag==1000:
        
     itemname = basename + '_'+str(thismag)+'x'
      
-    outfile = os.path.join(dirname,itemname)
+    outfile = os.path.join(dirname,itemname+'.n5')
     
     im_idx = np.where(mags==thismag)
     
