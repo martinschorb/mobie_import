@@ -101,8 +101,9 @@ def write_fast_xml(outname,views):
 
 
 #======================================
-            
-def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,timept=0,bdv_unit='um',cluster=False):
+       
+     
+def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,timept=0,bdv_unit='um'):
 
     ndim = data.ndim
     if ndim > 2: assert ndim == 3, "Only support 3d"
@@ -131,7 +132,8 @@ def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,ti
         view['attributes']['displaysettings']['min']='0'
         view['attributes']['displaysettings']['max']='65535'
         
-    print('Converting '+outfile+' into BDV format ' +outfile+'.')
+    print('Converting '+outfile+' into BDV format ' +outfile+'.')   
+    
     
     pybdv.make_bdv(data1,outfile,downscale_factors,
                        resolution = view['resolution'],
@@ -163,8 +165,8 @@ def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,ti
         tree.write(xml_path)
         
         
-def get_displaysettings(outfile):
-    root = ET.parse(outfile+'.xml')
+def get_displaysettings(infile):
+    root = ET.parse(infile+'.xml')
     seqdes = root.find('SequenceDescription')
     vs0 = seqdes.find('ViewSetups')
     atts = vs0.findall('Attributes')
@@ -195,5 +197,23 @@ def dict2xml(indict,outfile,root=None):
         
     tf.indent_xml(root)
     tree = ET.ElementTree(root)
+    tree.write(outfile)
+
+    
         
+def xml2dict(infile,root=None):
+   if root==None:
+        tree = ET.parse(infile+'.xml')
+        root = tree.getroot()
+    
+   d=dict()
+    
+   for elem in root:
+       if len(elem)==0:
+           d[elem.tag]=elem.text
+       else:
+           d[elem.tag]=xml2dict(infile,root=elem)
         
+   return d
+        
+     

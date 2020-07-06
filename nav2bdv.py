@@ -525,28 +525,19 @@ if tomos:
         view['attributes']['displaysettings']['max']=data.max()
         
 
-        
-        if cluster:
-            view_xml = 'convert_'+base1+'.xml'
-            bdv.dict2xml(view,view_xml)
-            print('Submitting conversion of tomogram '+base1+' to cluster.')
-            
-            
-            
-            
-        else:
-            data = mfile.data        
-        
-            # check if volume is rotated 
-            if data.shape[0]/data.shape[1]>5:
-                data = np.swapaxes(data,0,1)
+
+        data = mfile.data        
     
-                data0 = np.swapaxes(data,0,2)
-                data1 = np.fliplr(data0)
-                data2 = np.swapaxes(data1,0,2)
-          
-                bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster)
-      
+        # check if volume is rotated 
+        if data.shape[0]/data.shape[1]>5:
+            data = np.swapaxes(data,0,1)
+
+        data0 = np.swapaxes(data,0,2)
+        data1 = np.fliplr(data0)
+        data2 = np.swapaxes(data1,0,2)
+  
+        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster)
+  
         mfile.close()
         
            
