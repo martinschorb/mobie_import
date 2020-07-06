@@ -4,6 +4,10 @@ import numpy as np
 import pybdv
 import xml.etree.ElementTree as ET
 from pybdv import transformations as tf
+import os
+
+from cluster_ms import submit_slurm
+
 
 colors=dict()
 
@@ -14,13 +18,13 @@ colors['W'] = '255 255 255 255'
 colors['BF'] = '255 255 255 255'
 
 
-# functions to help playing with BDV 
+# functions to help playing with BDV
 
 
-def write_fast_xml(outname,views):   
-    
-    
-    
+def write_fast_xml(outname,views):
+
+
+
      # write top-level data
     root = ET.Element('SpimData')
     root.set('version', '0.2')
@@ -29,31 +33,31 @@ def write_fast_xml(outname,views):
     bp.text = '.'
 
     # make the sequence description element
-    seqdesc = ET.SubElement(root, 'SequenceDescription')    
-    
-    
+    seqdesc = ET.SubElement(root, 'SequenceDescription')
+
+
     # make the image loader
-    imgload = ET.SubElement(seqdesc, 'ImageLoader')    
+    imgload = ET.SubElement(seqdesc, 'ImageLoader')
     imgload.set('format', 'spimreconstruction.filelist')
     il2c = ET.SubElement(imgload,'imglib2container')
     il2c.text = 'ArrayImgFactory'
     zg = ET.SubElement(imgload,'ZGrouped')
     zg.text = 'false'
-    
+
     files = ET.SubElement(imgload,'files')
-    
+
     # make the view descriptions
     viewsets = ET.SubElement(seqdesc, 'ViewSetups')
-    
+
     # timepoint description
     tpoints = ET.SubElement(seqdesc, 'Timepoints')
     tpoints.set('type', 'range')
     ET.SubElement(tpoints, 'first').text = '0'
     ET.SubElement(tpoints, 'last').text = '0'
-    
+
     # make the registration decriptions
     vregs = ET.SubElement(root, 'ViewRegistrations')
-    
+
     # Some more stuff that BigStitcher has. Maybe it's needed
     # MiV = ET.SubElement(seqdesc, 'MissingViews')
     # Vip = ET.SubElement(root, 'ViewInterestPoints')
@@ -61,29 +65,29 @@ def write_fast_xml(outname,views):
     # PSF = ET.SubElement(root, 'PointSpreadFunctions')
     # StR = ET.SubElement(root, 'StitchingResults')
     # InA = ET.SubElement(root, 'IntensityAdjustments')
-    
-    pybdv.metadata._initialize_attributes(viewsets, views[0]['attributes'])    
-        
+
+    pybdv.metadata._initialize_attributes(viewsets, views[0]['attributes'])
+
     for thisview in views:
         pybdv.metadata._update_attributes(viewsets, thisview['attributes'])
-        
+
         thisFMap = ET.SubElement(files,'FileMapping')
         thisFMap.set("view_setup",str(thisview['setup_id']))
         thisFMap.set("timepoint",'0')
         thisFMap.set("series",'0')
-        
+
         if 'channel' in thisview['attributes'].keys():
             thisFMap.set("channel",str(thisview['attributes']['channel']))
         else:
-            thisFMap.set("channel",'0')          
-        
+            thisFMap.set("channel",'0')
+
         thisfile = ET.SubElement(thisFMap,'file')
         thisfile.set("type","relative")
         thisfile.text = thisview['file']
-        
+
         if not 'setup_name' in thisview.keys():
             thisview['setup_name']=str(thisview['setup_id'])
-        
+
         # write view setup
         pybdv.metadata._require_view_setup(viewsets,thisview['setup_id'],thisview['setup_name'],thisview['resolution'],thisview['size'],thisview['attributes'],'nm',False)
         # write transformation(s)
@@ -93,127 +97,157 @@ def write_fast_xml(outname,views):
     pybdv.metadata.indent_xml(root)
     tree = ET.ElementTree(root)
     tree.write(outname,encoding="UTF-8",xml_declaration=True)
-        
+
+
+
+#%%
+================================================================================
 
 
 
 
+def write_bdv(outfile, data, view,blow_2d=1,
+                            outf='.h5',
+                            downscale_factors = None,
+                            timept=0,bdv_unit='um',
+                            cluster=False):
 
+    if cluster:
 
-#======================================
-       
-     
-def write_bdv(outfile,data,view,blow_2d=1,outf='.h5',downscale_factors = None,timept=0,bdv_unit='um'):
+        outdir = os.path.dirname(outfile)
+        view_xml = os.path.join(outdir,'view.xml')
+        dict2xml(view,view_xml)
 
-    ndim = data.ndim
-    if ndim > 2: assert ndim == 3, "Only support 3d"
-        #assert len(resolution) == ndim
-    if ndim < 3: 
-        assert ndim == 2, "Only support 2d"
-        data=np.expand_dims(data,axis=0)
-        
-    data1=data
-    
-    if data.dtype.kind=='i':
-        if data.dtype.itemsize == 1:
-            data1 = np.uint8(data-data.min())
+        n_threads = 4
+        time = 5
+        mem = 8
+
+        user = os.popen('whoami').read()
+        user+='@eml.de'
+
+        script = '....''
+
+        submit_slurm(script, input_, n_threads=n_threads, mem_limit=str(mem)+'G',
+                         time_limit=time,
+                         env_name=None, mail_address=None)
+
+    else:
+
+        ndim = data.ndim
+        if ndim > 2: assert ndim == 3, "Only support 3d"
+            #assert len(resolution) == ndim
+        if ndim < 3:
+            assert ndim == 2, "Only support 2d"
+            data=np.expand_dims(data,axis=0)
+
+        data1=data
+
+        if data.dtype.kind=='i':
+            if data.dtype.itemsize == 1:
+                data1 = np.uint8(data-data.min())
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+            elif data.dtype.itemsize == 2:
+                data1 = np.uint16(data-data.min())
+                view['attributes']['displaysettings']['min']='0'
+                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+        elif not data.dtype.kind=='u':
+            data1 = np.uint16((data-data.min())/data.max()*65535)
             view['attributes']['displaysettings']['min']='0'
-            view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-        elif data.dtype.itemsize == 2:
-            data1 = np.uint16(data-data.min())
+            view['attributes']['displaysettings']['max']='65535'
+        elif data.dtype.itemsize > 2:
+            data1 = np.uint16((data-data.min())/data.max()*65535)
             view['attributes']['displaysettings']['min']='0'
-            view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-    elif not data.dtype.kind=='u':
-        data1 = np.uint16((data-data.min())/data.max()*65535)
-        view['attributes']['displaysettings']['min']='0'
-        view['attributes']['displaysettings']['max']='65535'
-    elif data.dtype.itemsize > 2:
-        data1 = np.uint16((data-data.min())/data.max()*65535)
-        view['attributes']['displaysettings']['min']='0'
-        view['attributes']['displaysettings']['max']='65535'
-        
-    print('Converting '+outfile+' into BDV format ' +outfile+'.')   
-    
-    
-    pybdv.make_bdv(data1,outfile,downscale_factors,
-                       resolution = view['resolution'],
-                       unit = bdv_unit, 
-                       setup_id = view['setup_id'],
-                       timepoint = timept,
-                       setup_name = view['setup_name'],
-                       attributes = view['attributes'],
-                       affine = view['trafo'],
-                       overwrite = 'metadata')
-    
-    if 'OriginalFile' in view.keys():
-        
-        xml_path = outfile + '.xml'
-        
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        
-        if not root.find('OriginalFile') == None:
-            origf = root.find('OriginalFile')
-        else:
-            origf = ET.SubElement(root, 'OriginalFile')
-            
-        origf.text = view['OriginalFile']
-        
-        # write the xml
-        tf.indent_xml(root)
-        tree = ET.ElementTree(root)
-        tree.write(xml_path)
-        
-        
+            view['attributes']['displaysettings']['max']='65535'
+
+        print('Converting '+outfile+' into BDV format ' +outfile+'.')
+
+
+        pybdv.make_bdv(data1,outfile,downscale_factors,
+                           resolution = view['resolution'],
+                           unit = bdv_unit,
+                           setup_id = view['setup_id'],
+                           timepoint = timept,
+                           setup_name = view['setup_name'],
+                           attributes = view['attributes'],
+                           affine = view['trafo'],
+                           overwrite = 'metadata')
+
+        if 'OriginalFile' in view.keys():
+
+            xml_path = outfile + '.xml'
+
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+
+            if not root.find('OriginalFile') == None:
+                origf = root.find('OriginalFile')
+            else:
+                origf = ET.SubElement(root, 'OriginalFile')
+
+            origf.text = view['OriginalFile']
+
+            # write the xml
+            tf.indent_xml(root)
+            tree = ET.ElementTree(root)
+            tree.write(xml_path)
+
+#%%
+================================================================================
+
 def get_displaysettings(infile):
     root = ET.parse(infile+'.xml')
     seqdes = root.find('SequenceDescription')
     vs0 = seqdes.find('ViewSetups')
     atts = vs0.findall('Attributes')
-    
+
     for attribute in atts:
         if 'displaysettings' in attribute.attrib.values():
             ds = attribute.find('Displaysettings')
-            
-    
     dsv = dict()
-    
+
     for dset in ds:
         dsv[dset.tag] = dset.text
-        
+
     return dsv
-        
+
+#%%
+================================================================================
+
+
 def dict2xml(indict,outfile,root=None):
-    
+
     if root==None: root = ET.Element('py_dict')
-    
+
     for key,val in indict.items():
         cp = ET.SubElement(root,key)
-        
+
         if type(val)==dict:
             cp=dict2xml(val,root=cp)
         else:
             cp.text = str(val)
-        
+
     tf.indent_xml(root)
     tree = ET.ElementTree(root)
     tree.write(outfile)
 
-    
-        
+
+#%%
+================================================================================
+
+
+
 def xml2dict(infile,root=None):
    if root==None:
         tree = ET.parse(infile+'.xml')
         root = tree.getroot()
-    
+
    d=dict()
-    
+
    for elem in root:
        if len(elem)==0:
            d[elem.tag]=elem.text
        else:
            d[elem.tag]=xml2dict(infile,root=elem)
-        
+
    return d
-        
-     
