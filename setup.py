@@ -6,8 +6,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='bdv_tools',
-      version='20200703',
-      py_modules=['bdv_tools','submit_slurm'],
+      version='20200706',
+      py_modules=['bdv_tools'],
       description='Tools to interact with BigDataViewer.',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -17,4 +17,4 @@ setup(name='bdv_tools',
       install_requires=[
       'numpy'
       ],
-      ) 
+      )
