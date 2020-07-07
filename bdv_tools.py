@@ -101,7 +101,7 @@ def write_fast_xml(outname,views):
 
 
 #%%
-================================================================================
+#================================================================================
 
 
 
@@ -125,11 +125,13 @@ def write_bdv(outfile, data, view,blow_2d=1,
         user = os.popen('whoami').read()
         user+='@eml.de'
 
-        script = '....''
+        script = '/g/emcf/cshorb/code/bdv_convert/write_bdv_cluster.py'        
+
+        env = '/g/emcf/software/python/miniconda/envs/bdv'
 
         submit_slurm(script, input_, n_threads=n_threads, mem_limit=str(mem)+'G',
                          time_limit=time,
-                         env_name=None, mail_address=None)
+                         env_name=env, mail_address=user)
 
     else:
 
@@ -193,7 +195,7 @@ def write_bdv(outfile, data, view,blow_2d=1,
             tree.write(xml_path)
 
 #%%
-================================================================================
+#================================================================================
 
 def get_displaysettings(infile):
     root = ET.parse(infile+'.xml')
@@ -212,7 +214,7 @@ def get_displaysettings(infile):
     return dsv
 
 #%%
-================================================================================
+#================================================================================
 
 
 def dict2xml(indict,outfile,root=None):
@@ -233,7 +235,7 @@ def dict2xml(indict,outfile,root=None):
 
 
 #%%
-================================================================================
+#================================================================================
 
 
 
