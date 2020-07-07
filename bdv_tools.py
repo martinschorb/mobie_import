@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 from pybdv import transformations as tf
 import os
 
-from cluster_ms import submit_slurm
+from slurmcluster import submit_slurm
 
 
 colors=dict()
@@ -125,7 +125,7 @@ def write_bdv(outfile, data, view,blow_2d=1,
         user = os.popen('whoami').read()
         user+='@eml.de'
 
-        script = '/g/emcf/cshorb/code/bdv_convert/write_bdv_cluster.py'        
+        script = '/g/emcf/cshorb/code/bdv_convert/write_bdv_cluster.py'
 
         env = '/g/emcf/software/python/miniconda/envs/bdv'
 
