@@ -113,12 +113,13 @@ def write_bdv(outfile, data, view,blow_2d=1,
                             outf='.h5',
                             downscale_factors = None,
                             timept=0,bdv_unit='um',
-                            cluster=False):
+                            cluster=False,infile=None):
 
     if cluster:
 
         outdir = os.path.dirname(outfile)
-        view_xml = os.path.join(outdir,'view.xml')
+        outbase = os.path.splitext(outfile)[0]
+        view_xml = outbase+'_view.xml'
         dict2xml(view,view_xml)
 
         n_threads = 4
@@ -132,8 +133,9 @@ def write_bdv(outfile, data, view,blow_2d=1,
         env = '/g/emcf/software/python/miniconda/envs/bdv'
 
         callcmd = 'python '+script
-        
-        callcmd += ' '+view_xml+' '.join(['n_threads',str(n_threads),
+
+        callcmd += ' '+' '.join([infile,outfile,view_xml,
+                                          'n_threads',str(n_threads),
                                           'mem_limit',str(mem)+'G',
                                           'time_limit',str(time),
                                           'env_name',env,
@@ -141,9 +143,9 @@ def write_bdv(outfile, data, view,blow_2d=1,
 
 
         os.system(callcmd)
-        
-        
-        
+
+
+
             #submit_slurm(script, input_, n_threads=n_threads, mem_limit=str(mem)+'G',
             #             time_limit=time,
             #             env_name=env, mail_address=user)

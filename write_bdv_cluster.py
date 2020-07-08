@@ -5,10 +5,16 @@
 import bdv_tools as bdv
 import sys
 
-print('this is the script that runs')
+print('starting conversion to bdv on the cluster')
 
-xfile = sys.argv[1]
+infile = sys.argv[1]
+outfile = sys argv[2]
+xml_view = sys.argv[3]
 
-d = bdv.xml2dict(xfile)
+d = bdv.xml2dict(xml_view)
+
+
+print(infile)
+print(outfile)
 
 print(d)
