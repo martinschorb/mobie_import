@@ -8,7 +8,7 @@ import sys
 print('starting conversion to bdv on the cluster')
 
 infile = sys.argv[1]
-outfile = sys argv[2]
+outfile = sys.argv[2]
 xml_view = sys.argv[3]
 
 d = bdv.xml2dict(xml_view)
