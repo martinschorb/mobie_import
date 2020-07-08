@@ -13,4 +13,4 @@ c['4'] = 5
 
 print(c)
 
-bdv.dict2xml(c,'/g/emcf/cshorb/code/test.xml')
+bdv.dict2xml(c,'/g/emcf/schorb/code/test.xml')
