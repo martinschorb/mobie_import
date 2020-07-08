@@ -244,7 +244,7 @@ def dict2xml(indict,outfile,root=None):
 
 def xml2dict(infile,root=None):
    if root==None:
-        tree = ET.parse(infile+'.xml')
+        tree = ET.parse(infile)
         root = tree.getroot()
 
    d=dict()
