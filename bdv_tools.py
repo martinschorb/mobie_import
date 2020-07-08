@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from pybdv import transformations as tf
 import os
 
-from slurmcluster import submit_slurm
+from clusterms import submit_slurm
 
 
 colors=dict()
