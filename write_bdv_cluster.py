@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-#import bdv_tools as bdv
+import bdv_tools as bdv
 
 print('this is the script that runs')
 
@@ -13,4 +13,4 @@ c['4'] = 5
 
 print(c)
 
-#bdv.dict2xml(c,'/g/emcf/cshorb/code/test.xml')
+bdv.dict2xml(c,'/g/emcf/cshorb/code/test.xml')
