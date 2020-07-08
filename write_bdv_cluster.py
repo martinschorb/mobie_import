@@ -13,4 +13,8 @@ c['4'] = 5
 
 print(c)
 
-bdv.dict2xml(c,'/g/emcf/schorb/code/test.xml')
+xfile = '/g/emcf/schorb/code/test.xml'
+
+bdv.dict2xml(c,xfile)
+
+d = bdv.xml2dict(xfile)
