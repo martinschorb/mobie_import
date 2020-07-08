@@ -3,18 +3,12 @@
 
 
 import bdv_tools as bdv
+import sys
 
 print('this is the script that runs')
 
-c=dict()
-
-c['abc']='def'
-c['4'] = 5
-
-print(c)
-
-xfile = '/g/emcf/schorb/code/test.xml'
-
-bdv.dict2xml(c,xfile)
+xfile = sys.argv[1]
 
 d = bdv.xml2dict(xfile)
+
+print(d)
