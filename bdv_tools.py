@@ -268,10 +268,22 @@ def xml2dict(infile,root=None):
    d=dict()
 
    for elem in root:
-       if len(elem)==0:
-           d[elem.tag]=elem.text
-       else:
-           d[elem.tag]=xml2dict(infile,root=elem)
+        if len(elem)==0:
+             item = elem.text
+             try:
+                 int(item)
+                 item = int(item)
+             except ValueError:
+                 try:
+                     float(item)
+                     item = float(item)
+                 except ValueError:
+                     if item[0]=='[':
+                         item = str2list(item)
+                         
+             d[elem.tag] = item
+        else:
+            d[elem.tag]=xml2dict(infile,root=elem)
 
    return d
 
