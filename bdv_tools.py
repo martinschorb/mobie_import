@@ -300,8 +300,6 @@ def str2list(instr):
         for item in df1:            
             outlist.append(str2list('[' * (dim-1) + item))
     else:           
-        print('reached inner dim')
-        print(df1)
         for item in df1:
             try:
                 int(item)
