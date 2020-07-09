@@ -349,11 +349,12 @@ if tomos:
         base1 = os.path.basename(base)
         parts = re.split('\.|_|\-|;| |,',base1)
 
+
         for item in parts:
             if item.isnumeric():
                 base_idx = item
 
-        tomobase = os.path.join(tomodir,base)
+        tomobase = base
 
         if os.path.exists(tomobase+'.st.mdoc'):
             mdocfile = tomobase+'.st.mdoc'
@@ -424,26 +425,31 @@ if tomos:
 
             if navitem ==[]:
                 navitem = em.nav_find(allitems,'# Item','m_'+navlabel)
-
-
-            if not navitem ==[]:
+                
+            else:
+                    
                 navitem = navitem[0]
                 tomopx = float(slice1['PixelSpacing'][0]) / 10000 # in um
-                matchidx = np.argmin(np.abs(1-pxszs/tomopx))
-                map_px = pxszs[matchidx]
-                mat = np.multiply(mapinfo[matchidx][3] , tomopx/map_px)
-
+                
+                checkpx = True
                 # if underlying map
-                if navitem['Type'][0] == '2':
+                if navitem['Type'][0] == '2':                    
                     mapfile = em.map_file(navitem)
                     map_mrc = mrc.mmap(mapfile, permissive = 'True')
-                    map_px = map_mrc.voxel_size.x
+                    map_px = map_mrc.voxel_size.x / 10000
                     map_mrc.close()
 
                     # check if tomo mag matches map mag
                     if np.abs(1-map_px/tomopx) < 0.05:
                         mat = np.linalg.inv(em.map_matrix(navitem))
+                        checkpx = False
+                
+                if checkpx:
+                    matchidx = np.argmin(np.abs(1-pxszs/tomopx))
+                    map_px = pxszs[matchidx]
+                    mat = np.multiply(mapinfo[matchidx][3] , tomopx/map_px)
 
+                
                 xval = float(navitem['StageXYZ'][0])
                 yval = float(navitem['StageXYZ'][1])
                 pos = np.array([xval,yval])
@@ -507,7 +513,7 @@ if tomos:
 
         view=dict()
 
-        view['resolution'] = [pxs,pxs,pxs*zstretch]
+        view['resolution'] = [tomopx,tomopx,tomopx*zstretch]
         view['setup_id'] = setup_id
         view['setup_name'] = 'tomo_'+ os.path.basename(base)
 
@@ -521,12 +527,12 @@ if tomos:
 
         view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
         view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-        view['attributes']['displaysettings']['min']=data.min()
-        view['attributes']['displaysettings']['max']=data.max()
 
-
+        view['attributes']['displaysettings']['min']=-127
+        view['attributes']['displaysettings']['max']=127
 
         data = mfile.data
+
 
         # check if volume is rotated
         if data.shape[0]/data.shape[1]>5:

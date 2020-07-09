@@ -117,7 +117,7 @@ def write_bdv(outfile, data, view,blow_2d=1,
 
     if cluster:
 
-        outdir = os.path.dirname(outfile)
+        #outdir = os.path.dirname(outfile)
         outbase = os.path.splitext(outfile)[0]
         view_xml = outbase+'_view.xml'
         dict2xml(view,view_xml)
@@ -127,6 +127,10 @@ def write_bdv(outfile, data, view,blow_2d=1,
         mem = 8
 
         user = os.popen('whoami').read()
+        
+        #in case of domain:
+        user = user[user.find('\\')+1:]        
+        
         user = user.rstrip('\n')+'@embl.de'
 
         script = '/g/emcf/schorb/code/bdv_convert/write_bdv_cluster.py'
@@ -242,9 +246,9 @@ def dict2xml(indict,outfile,root=None):
         cp = ET.SubElement(root,key)
 
         if type(val)==dict:
-            cp=dict2xml(val,root=cp)
+            cp=dict2xml(val,outfile,root=cp)
         else:
-            cp.text = str(val)
+            cp.text = val
 
     tf.indent_xml(root)
     tree = ET.ElementTree(root)
@@ -270,3 +274,49 @@ def xml2dict(infile,root=None):
            d[elem.tag]=xml2dict(infile,root=elem)
 
    return d
+
+#%%
+#================================================================================
+
+
+def str2list(instr):
+    # find dim
+    
+    dim=0
+    
+    for dim in range(0,len(instr)):
+        if instr[dim]=='[':
+            continue
+        else:
+            break
+    
+    sepstr = ', ' + '[' * (dim-1)
+
+    df1 = instr[dim:-1].split(sepstr)
+    
+    outlist = list()
+    
+    if dim > 1:    
+        for item in df1:            
+            outlist.append(str2list('[' * (dim-1) + item))
+    else:           
+        print('reached inner dim')
+        print(df1)
+        for item in df1:
+            try:
+                int(item)
+                outlist.append(int(item))
+            except ValueError:
+                try:
+                    float(item)
+                    outlist.append(float(item))
+                except ValueError:
+                    outlist.append(item)                
+
+                
+
+    return outlist
+
+
+
+
