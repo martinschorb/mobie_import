@@ -134,7 +134,7 @@ def write_bdv(outfile, data, view,blow_2d=1,
 
         callcmd = 'python '+script
 
-        callcmd += ' '+' '.join([infile,outfile,view_xml,
+        callcmd += ' '+' '.join([infile,outfile,view_xml,str(downscale_factors),
                                           'n_threads',str(n_threads),
                                           'mem_limit',str(mem)+'G',
                                           'time_limit',str(time),
