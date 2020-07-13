@@ -122,9 +122,9 @@ def write_bdv(outfile, data, view,blow_2d=1,
         view_xml = outbase+'_view.xml'
         dict2xml(view,view_xml)
 
-        n_threads = 4
-        time = 5
-        mem = 8
+        n_threads = 3
+        time = 2
+        mem = 4
 
         user = os.popen('whoami').read()
         
@@ -132,20 +132,28 @@ def write_bdv(outfile, data, view,blow_2d=1,
         user = user[user.find('\\')+1:]        
         
         user = user.rstrip('\n')+'@embl.de'
+        
+        submit = '/g/emcf/schorb/code/cluster/submit_slurm.py'
 
         script = '/g/emcf/schorb/code/bdv_convert/write_bdv_cluster.py'
         env = '/g/emcf/software/python/miniconda/envs/bdv'
 
-        callcmd = 'python '+script
-
-        callcmd += ' '+' '.join([infile,outfile,view_xml,str(downscale_factors),
+        callcmd = 'python '+ submit + ' ' + script
+        
+        ds_str = '\"'+str(downscale_factors)+'\"'
+        
+        infile = os.path.abspath(infile)
+        outfile = os.path.abspath(outfile)
+        view_xml = os.path.abspath(view_xml)
+        
+        callcmd += ' '+' '.join([infile,outfile,view_xml,ds_str,
                                           'n_threads',str(n_threads),
                                           'mem_limit',str(mem)+'G',
                                           'time_limit',str(time),
                                           'env_name',env,
                                           'mail_address',user])
 
-
+        #print(callcmd)
         os.system(callcmd)
 
 
@@ -248,7 +256,7 @@ def dict2xml(indict,outfile,root=None):
         if type(val)==dict:
             cp=dict2xml(val,outfile,root=cp)
         else:
-            cp.text = val
+            cp.text = str(val)
 
     tf.indent_xml(root)
     tree = ET.ElementTree(root)

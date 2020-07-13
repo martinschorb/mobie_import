@@ -17,7 +17,7 @@ from skimage import io
 
 import bdv_tools as bdv
 
-tomos = False
+tomos = True
 blend = True
 fast = False
 
@@ -39,7 +39,7 @@ tomodir = 'tomo'
 recdir = 'tomo_rec'
 
 
-cluster = False
+cluster = True
 
 
 #%%
@@ -333,7 +333,7 @@ if tomos:
 
     filelist = list()
 
-    for file in glob.iglob(tomodir+'/*.rec', recursive=True):
+    for file in glob.iglob(recdir+'/*.rec', recursive=True):
         dual = False
 
         base = os.path.splitext(file)[0]
@@ -354,7 +354,7 @@ if tomos:
             if item.isnumeric():
                 base_idx = item
 
-        tomobase = base
+        tomobase = os.path.join(tomodir,base1)
 
         if os.path.exists(tomobase+'.st.mdoc'):
             mdocfile = tomobase+'.st.mdoc'

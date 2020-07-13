@@ -23,7 +23,7 @@ downscale_factors = bdv.str2list(df_str)
 if len(downscale_factors)<3:downscale_factors = None
 
 
-print('starting conversion to bdv on the cluster for '+infile)
+print('starting conversion to bdv on the cluster for '+ os.path.basename(infile))
 
 view = bdv.xml2dict(view_xml)
 
@@ -57,6 +57,8 @@ elif os.path.splitext(infile)[-1].lower() in tifext:
 
 bdv.write_bdv(outfile,data,view,blow_2d=1,downscale_factors=downscale_factors,cluster=False,infile=infile)
 
-    
+os.remove(view_xml)
+
+print('conversion to bdv on the cluster for '+ os.path.basename(infile) + ' successful.' )   
 
 
