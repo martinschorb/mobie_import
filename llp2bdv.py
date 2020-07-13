@@ -25,12 +25,13 @@ int_width = 2
 downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 dirname = 'bdv_LLP'
+outformat = '.h5'
 
 #%%
 
 
 
-basename =''
+basename ='LLP'
 
 cwd = os.getcwd()
 
@@ -74,6 +75,7 @@ h_av = c.fetchall()[1][0]
 c.execute('SELECT histgramStdev FROM histgram')
 h_sd = c.fetchall()[1][0]
 
+db.close()
 
 #minmax iwill be based on average value, otherwise use given values
 
@@ -95,7 +97,7 @@ if thismag==1000:
        
     itemname = basename + '_'+str(thismag)+'x'
      
-    outfile = os.path.join(dirname,itemname+'.n5')
+    outfile = os.path.join(dirname,itemname)
     
     im_idx = np.where(mags==thismag)
     
@@ -140,7 +142,7 @@ if thismag==1000:
         ct = np.cos(th)
         st = np.sin(th)
         
-        rotmat = pxs * np.array([[ct,st,0],[-st,ct,0],[0,0,1]])
+        rotmat = pxs * np.array([[ct,-st,0],[st,ct,0],[0,0,1]])
         mat_r = np.concatenate((rotmat,[[0],[0],[0]]),axis=1)                
         mat_r = np.concatenate((mat_r,[[0,0,0,1]]))
         
