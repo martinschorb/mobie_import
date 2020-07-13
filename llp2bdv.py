@@ -25,7 +25,9 @@ int_width = 2
 downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 dirname = 'bdv_LLP'
-outformat = '.h5'
+outformat = '.n5'
+chunks = None
+#chunks = (1,512,512)
 
 #%%
 
@@ -97,7 +99,8 @@ if thismag==1000:
        
     itemname = basename + '_'+str(thismag)+'x'
      
-    outfile = os.path.join(dirname,itemname)
+    outfile = os.path.join(dirname,itemname)    
+    outfile = outfile + outformat
     
     im_idx = np.where(mags==thismag)
     
@@ -170,7 +173,7 @@ if thismag==1000:
         data  = im
         thisview['attributes']['displaysettings']['min']=h_min
         thisview['attributes']['displaysettings']['max']=h_max
-        bdv.write_bdv(outfile,data,thisview,1,downscale_factors)
+        bdv.write_bdv(outfile,data,thisview,1,downscale_factors,chunks=chunks)
     
 
 

@@ -113,12 +113,12 @@ def write_bdv(outfile, data, view,blow_2d=1,
                             outf='.h5',
                             downscale_factors = None,
                             timept=0,bdv_unit='um',
-                            cluster=False,infile=None):
+                            cluster=False,infile=None,chunks=None):
+    outbase = os.path.splitext(outfile)[0]
 
     if cluster:
 
         #outdir = os.path.dirname(outfile)
-        outbase = os.path.splitext(outfile)[0]
         view_xml = outbase+'_view.xml'
         dict2xml(view,view_xml)
 
@@ -190,8 +190,11 @@ def write_bdv(outfile, data, view,blow_2d=1,
             data1 = np.uint16((data-data.min())/data.max()*65535)
             view['attributes']['displaysettings']['min']='0'
             view['attributes']['displaysettings']['max']='65535'
+        
 
-        print('Converting '+outfile+' into BDV format ' +outfile+'.')
+        sname = view['setup_name']        
+
+        print('Converting '+ sname + ' into BDV format.')
 
 
         pybdv.make_bdv(data1,outfile,downscale_factors,
@@ -202,11 +205,12 @@ def write_bdv(outfile, data, view,blow_2d=1,
                            setup_name = view['setup_name'],
                            attributes = view['attributes'],
                            affine = view['trafo'],
-                           overwrite = 'metadata')
+                           overwrite = 'metadata',
+                           chunks = chunks)
 
         if 'OriginalFile' in view.keys():
 
-            xml_path = outfile + '.xml'
+            xml_path = os.path.splitext(outfile)[0] + '.xml'
 
             tree = ET.parse(xml_path)
             root = tree.getroot()
