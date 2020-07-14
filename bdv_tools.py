@@ -339,6 +339,45 @@ def str2list(instr):
 
     return outlist
 
+#%%
+    
+#=================================================================================
+    
+def str2dict(fun_in):
+    
+    if type(fun_in)==list:
+        inlist = fun_in
+    else:
+        instr = str(fun_in.strip('{}'))
+        inlist = instr.split(', ')
+    
+    
+    output = dict()
+    
+    for elem in inlist:
+        keyval = elem.split(': ')     
+        
+        key = str(keyval[0]).strip('\'\"')
+        item = str(keyval[1]).strip('\'\"')
+           
+        if item.startswith('{'):
+            output[key] = str2dict(item)
+        else:
+             try:
+                 int(item)
+                 item = int(item)
+             except ValueError:
+                 try:
+                     float(item)
+                     item = float(item)
+                 except ValueError:
+                     if item[0]=='[':
+                         item = str2list(item)
+                         
+             output[key] = item
 
+           
+           
+    
 
 
