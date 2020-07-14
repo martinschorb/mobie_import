@@ -72,12 +72,13 @@ def write_fast_xml(outname,views):
     pybdv.metadata._initialize_attributes(viewsets, views[0]['attributes'])
 
     for thisview in views:
-        pybdv.metadata._update_attributes(viewsets, thisview['attributes'])
-
+        
         thisFMap = ET.SubElement(files,'FileMapping')
         thisFMap.set("view_setup",str(thisview['setup_id']))
         thisFMap.set("timepoint",'0')
         thisFMap.set("series",'0')
+        
+        pybdv.metadata._update_attributes(viewsets, thisview['attributes'],True)
 
         if 'channel' in thisview['attributes'].keys():
             thisFMap.set("channel",str(thisview['attributes']['channel']))
@@ -92,9 +93,9 @@ def write_fast_xml(outname,views):
             thisview['setup_name']=str(thisview['setup_id'])
 
         # write view setup
-        pybdv.metadata._require_view_setup(viewsets,thisview['setup_id'],thisview['setup_name'],thisview['resolution'],thisview['size'],thisview['attributes'],'nm',False)
+        pybdv.metadata._require_view_setup(viewsets,thisview['setup_id'],thisview['setup_name'],thisview['resolution'],thisview['size'],thisview['attributes'],'nm',True,False,True)
         # write transformation(s)
-        pybdv.metadata._write_affine(vregs,thisview['setup_id'],'0',thisview['trafo'])
+        pybdv.metadata._write_transformation(vregs,thisview['setup_id'],'0',thisview['trafo'],thisview['resolution'],True)
 
         # write the xml
     pybdv.metadata.indent_xml(root)
@@ -376,8 +377,7 @@ def str2dict(fun_in):
                          
              output[key] = item
 
-           
-           
+    return output
     
 
 

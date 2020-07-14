@@ -156,7 +156,7 @@ for idx,item in enumerate(allitems):
                 thisview['file'] = '../'+imbase
                 thisview['OriginalFile'] = imfile
 
-                thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
+                thisview['size'] = [1,mergemap['mapheader']['ysize'], mergemap['mapheader']['xsize']]
                 thisview['resolution'] = [pxs,pxs,pxs]
                 thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
                 thisview['setup_id'] = setup_id
@@ -189,7 +189,7 @@ for idx,item in enumerate(allitems):
                     views.append(thisview)
 
             if fast:
-                bdv.write_fast_xml(outfile+'.xml',views,downscale_factors)
+                bdv.write_fast_xml(outfile+'.xml',views)
 
         elif len(mergemap['im'].shape)==3 and blend==False and not('Imported' in item.keys()):
             # montage tiles in mrc stack
