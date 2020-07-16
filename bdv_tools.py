@@ -69,7 +69,7 @@ def write_fast_xml(outname,views):
     # StR = ET.SubElement(root, 'StitchingResults')
     # InA = ET.SubElement(root, 'IntensityAdjustments')
 
-    pybdv.metadata._initialize_attributes(viewsets, views[0]['attributes'])
+    pybdv.metadata._initialize_attributes(viewsets,views[0]['attributes'])
 
     for thisview in views:
         
