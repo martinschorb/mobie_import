@@ -15,6 +15,8 @@ import bdv_tools as bdv
 
 from skimage import io
 
+from tkinter import Tk,messagebox,filedialog
+
 
 # base intensity normailsation on average instead of absolute minmax values
 
@@ -31,11 +33,18 @@ chunks = None
 
 #%%
 
+root0=Tk()
+root0.withdraw()
+root0.wm_attributes("-topmost", 1)
 
+mb1=messagebox.showinfo("Please select LLP directory","Please select the LLP directory to start the conversion.\n",parent = root0)
+cwd = filedialog.askdirectory(title = "Select Amira output file",parent = root0)
+             
+#%%
 
 basename ='LLP'
 
-cwd = os.getcwd()
+#cwd = os.getcwd()
 
 if not os.path.exists(dirname):
     os.makedirs(dirname)
@@ -91,10 +100,10 @@ if int_av:
 
 # process each mag separately
     
-#for thismag in np.unique(mags):
+for thismag in np.unique(mags):
 
-thismag=1000
-if thismag==1000:
+# thismag=1000
+# if thismag==1000:
     
        
     itemname = basename + '_'+str(thismag)+'x'

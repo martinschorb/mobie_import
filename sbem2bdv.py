@@ -42,7 +42,7 @@ for mfile in mfiles:
     config = parse_adoc(cl)
     
     
-    pxs = float(config['pixel_size'][0])*2#/1000  # in um
+    pxs = float(config['grab_frame_pixel_size'][0])#/1000  # in um
     z_thick = float(config['slice_thickness'][0])#/1000  # in um
     
     

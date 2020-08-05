@@ -1,0 +1,48 @@
+<protocol VERSION="4">
+<blocks>
+<workflow ID="715066983" blockType="plugins.adufour.blocks.lang.WorkFlow" className="plugins.adufour.blocks.lang.WorkFlow" collapsed="false" definedName="Work flow" height="209" keepsResults="true" width="656" xLocation="177" yLocation="11">
+<blocks>
+<block ID="284486847" blockType="plugins.adufour.blocks.tools.io.GetSequenceFolder" className="plugins.adufour.blocks.tools.io.GetSequenceFolder" collapsed="false" definedName="Get sequence folder" height="83" keepsResults="true" width="245" xLocation="24" yLocation="15">
+<variables>
+<input>
+<variable ID="Sequence" name="Sequence" runtime="false" value="Active Sequence" visible="true"/>
+</input>
+<output>
+<variable ID="Folder" name="Folder" runtime="false" visible="true"/>
+</output>
+</variables>
+</block>
+<block ID="1964910018" blockType="plugins.tprovoost.scripteditor.scriptblock.Javascript" className="plugins.tprovoost.scripteditor.scriptblock.Javascript" collapsed="true" definedName="Javascript" height="568" keepsResults="true" width="847" xLocation="382" yLocation="54">
+<variables>
+<input>
+<variable ID="Script" name="" runtime="false" value="// Click on the button&#10;// to edit in a frame.&#10;&#10;File1 = input0&#10;&#10;fstr = File1.toString()&#10;&#10;output0 = fstr&#10;&#10;importClass(java.lang.Runtime)&#10; &#10;p = Runtime.getRuntime().exec('cmd /c start C:\Software\\icy2bdv.bat '+ output0)&#10;" visible="true"/>
+<variable ID="Add Input" name="Add Input" runtime="false" value="0" visible="true"/>
+<variable ID="Add output" name="Add Output" runtime="false" value="0" visible="true"/>
+<variable ID="input0" name="input0" runtime="false" type="java.io.File" visible="true"/>
+</input>
+<output>
+<variable ID="output0" name="output0" runtime="false" type="java.lang.String" visible="true"/>
+</output>
+</variables>
+</block>
+</blocks>
+<links>
+<link dstBlockID="1964910018" dstVarID="input0" srcBlockID="284486847" srcVarID="Folder"/>
+</links>
+<variables>
+<input>
+<variable ID="284486847:Sequence" blockID="284486847" value="Active Sequence" visible="false"/>
+<variable ID="1964910018:Script" blockID="1964910018" value="// Click on the button&#10;// to edit in a frame.&#10;&#10;File1 = input0&#10;&#10;fstr = File1.toString()&#10;&#10;output0 = fstr&#10;&#10;importClass(java.lang.Runtime)&#10; &#10;p = Runtime.getRuntime().exec('cmd /c start C:\Software\\test.bat '+ output0)&#10;" visible="false"/>
+<variable ID="1964910018:Add Input" blockID="1964910018" value="0" visible="false"/>
+<variable ID="1964910018:Add output" blockID="1964910018" value="0" visible="false"/>
+<variable ID="1964910018:input0" blockID="1964910018" value="C:\Users\schorb\Desktop" visible="false"/>
+</input>
+<output>
+<variable ID="284486847:Folder" blockID="284486847" visible="false"/>
+<variable ID="1964910018:output0" blockID="1964910018" visible="false"/>
+</output>
+</variables>
+</workflow>
+</blocks>
+<links/>
+</protocol>

@@ -284,15 +284,16 @@ def xml2dict(infile,root=None):
         if len(elem)==0:
              item = elem.text
              try:
-                 int(item)
-                 item = int(item)
+                 item = int(item)                 
              except ValueError:
                  try:
-                     float(item)
-                     item = float(item)
+                     item = float(item)                     
                  except ValueError:
-                     if item[0]=='[':
-                         item = str2list(item)
+                     try:
+                         item = bool(item)
+                     except ValueError:                     
+                        if item[0]=='[':
+                            item = str2list(item)
                          
              d[elem.tag] = item
         else:
@@ -308,6 +309,8 @@ def str2list(instr):
     # find dim
     
     dim=0
+    
+    instr=str(instr)
     
     for dim in range(0,len(instr)):
         if instr[dim]=='[':
@@ -327,17 +330,18 @@ def str2list(instr):
     else:           
         for item in df1:
             try:
-                int(item)
                 outlist.append(int(item))
             except ValueError:
                 try:
-                    float(item)
                     outlist.append(float(item))
                 except ValueError:
-                    outlist.append(item)                
+                    if item == 'True': outlist.append(True)
+                    elif item == 'False': outlist.append(False)
+                    elif item == 'None': outlist.append(None)
+                    else: outlist.append(item)                
 
                 
-
+    
     return outlist
 
 #%%
