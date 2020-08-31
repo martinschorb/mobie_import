@@ -156,7 +156,8 @@ def write_bdv(outfile, data, view,blow_2d=1,
                                           'mem_limit',str(mem)+'G',
                                           'time_limit',str(time),
                                           'env_name',env,
-                                          'mail_address',user])
+                                          'mail_address',user,
+                                          'modules','[IMOD]])
 
         #print(callcmd)
         os.system(callcmd)
