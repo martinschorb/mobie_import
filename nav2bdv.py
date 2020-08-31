@@ -19,27 +19,31 @@ import bdv_tools as bdv
 
 tomos = True
 blend = True
+skipmaps = True
 fast = False
+cluster = True
+
 
 bdv_unit = 'um'
 
 timept = 0
 
-outformat='.h5'
+outformat='.n5'
 
-downscale_factors = None#list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
+chunks = list((16,192,192))
+downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 blow_2d = 1
 
 # from the configuration in our Tecnai, will be used if no specific info can be found
 ta_angle = -11.3
 
-dirname0 = 'bdv'
+dirname0 = 'bdv'+outformat
 
 tomodir = 'tomo'
 recdir = 'tomo_rec'
 
 
-cluster = False
+
 
 
 #%%
@@ -51,7 +55,8 @@ navfile = sys.argv[1]
 os.chdir(os.path.dirname(navfile))
 #%%
 
-
+if skipmaps:
+    blend = False
 
 #=======================================
 
@@ -100,7 +105,7 @@ for idx,item in enumerate(allitems):
 
         print('Processing map '+itemname+' to be added to BDV.')
 
-        outfile = os.path.join(dirname,outname)
+        outfile = os.path.join(dirname,outname)+outformat
 
         mergemap = em.mergemap(item,blendmont=blend)
 
@@ -134,176 +139,175 @@ for idx,item in enumerate(allitems):
 
 
         # continue based on properties of the map
-
-        if type(mergemap['im'])==list:
-            # map is composed of single tifs. Can feed them directly into BDV/BigStitcher
-            setup_id=0
-            tile_id=0
-            views=list()
-
-            numim = len(mergemap['im'])
-
-            digits = len(str(numim))
-
-
-            for imfile in mergemap['im']:
-
-                # directly into BigStitcher/BDV
-
-                imbase = os.path.basename(imfile)
-                thisview=dict()
-
-                thisview['file'] = '../'+imbase
-                thisview['OriginalFile'] = imfile
-
-                thisview['size'] = [1,mergemap['mapheader']['ysize'], mergemap['mapheader']['xsize']]
-                thisview['resolution'] = [pxs,pxs,pxs]
-                thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
-                thisview['setup_id'] = setup_id
-
-                thisview['attributes'] = dict()
-                thisview['attributes']['tile'] = dict({'id':tile_id})
-
-                thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true','min':0,'max':65535})
-                thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-                thisview['trafo'] = dict()
-                thisview['trafo']['Translation'] = tf_tr
-                thisview['trafo']['MapScaleMat'] = tf_sc
-
-                mat_tpos = np.concatenate(([[1,0],[0,-1]],[[0,mergemap['tilepx'][tile_id][0]],[0,mergemap['mapheader']['ysize']+mergemap['tilepx'][tile_id][1]]]),axis=1)
-                mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
-
-                thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
-
-
-                tile_id = tile_id+1
-                setup_id = setup_id+1
-
-                if not fast:
-                    data  = io.imread(imfile)
-                    thisview['attributes']['displaysettings']['min']=data.min()
-                    thisview['attributes']['displaysettings']['max']=data.max()
+        if not skipmaps:
+            if type(mergemap['im'])==list:
+                # map is composed of single tifs. Can feed them directly into BDV/BigStitcher
+                setup_id=0
+                tile_id=0
+                views=list()
+                numim = len(mergemap['im'])
+    
+                digits = len(str(numim))
+    
+    
+                for imfile in mergemap['im']:
+    
+                    # directly into BigStitcher/BDV
+    
+                    imbase = os.path.basename(imfile)
+                    thisview=dict()
+    
+                    thisview['file'] = '../'+imbase
+                    thisview['OriginalFile'] = imfile
+    
+                    thisview['size'] = [1,mergemap['mapheader']['ysize'], mergemap['mapheader']['xsize']]
+                    thisview['resolution'] = [pxs,pxs,pxs]
+                    thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
+                    thisview['setup_id'] = setup_id
+    
+                    thisview['attributes'] = dict()
+                    thisview['attributes']['tile'] = dict({'id':tile_id})
+    
+                    thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true','min':0,'max':65535})
+                    thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+    
+                    thisview['trafo'] = dict()
+                    thisview['trafo']['Translation'] = tf_tr
+                    thisview['trafo']['MapScaleMat'] = tf_sc
+    
+                    mat_tpos = np.concatenate(([[1,0],[0,-1]],[[0,mergemap['tilepx'][tile_id][0]],[0,mergemap['mapheader']['ysize']+mergemap['tilepx'][tile_id][1]]]),axis=1)
+                    mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
+    
+                    thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
+    
+    
+                    tile_id = tile_id+1
+                    setup_id = setup_id+1
+    
+                    if not fast:
+                        data  = io.imread(imfile)
+                        thisview['attributes']['displaysettings']['min']=data.min()
+                        thisview['attributes']['displaysettings']['max']=data.max()
+                        bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors)
+                    else:
+                        views.append(thisview)
+    
+                if fast:
+                    bdv.write_fast_xml(outfile+'.xml',views)
+    
+            elif len(mergemap['im'].shape)==3 and blend==False and not('Imported' in item.keys()):
+                # montage tiles in mrc stack
+    
+    
+                setup_id=0
+                tile_id=0
+    
+                numslices = mergemap['im'].shape[2]
+                digits = len(str(numslices))
+    
+                for tile_id in range(numslices):
+    
+                    thisview=dict()
+    
+                    thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
+                    thisview['resolution'] = [pxs,pxs,pxs]
+                    thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
+                    thisview['setup_id'] = setup_id
+    
+                    thisview['OriginalFile'] = mergemap['mapfile']
+    
+                    thisview['attributes'] = dict()
+                    thisview['attributes']['tile'] = dict({'id':tile_id})
+    
+                    thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+                    thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+    
+                    thisview['trafo'] = dict()
+                    thisview['trafo']['Translation'] = tf_tr
+                    thisview['trafo']['MapScaleMat'] = tf_sc
+    
+                    mat_tpos = np.concatenate(([[1,0],[0,1]],[[0,mergemap['tilepx'][tile_id][0]],[0,mergemap['mergeheader']['ysize']-mergemap['mapheader']['ysize']-mergemap['tilepx'][tile_id][1]]]),axis=1)
+                    mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
+    
+                    thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
+    
+                    setup_id = setup_id+1
+    
+                    data  = mergemap['im'][:,:,tile_id]
+                    thisview['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
+                    thisview['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
                     bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors)
-                else:
-                    views.append(thisview)
-
-            if fast:
-                bdv.write_fast_xml(outfile+'.xml',views)
-
-        elif len(mergemap['im'].shape)==3 and blend==False and not('Imported' in item.keys()):
-            # montage tiles in mrc stack
-
-
-            setup_id=0
-            tile_id=0
-
-            numslices = mergemap['im'].shape[2]
-            digits = len(str(numslices))
-
-            for tile_id in range(numslices):
-
-                thisview=dict()
-
-                thisview['size'] = [1,mergemap['mapheader']['xsize'], mergemap['mapheader']['ysize']]
-                thisview['resolution'] = [pxs,pxs,pxs]
-                thisview['setup_name'] = itemname+'_tile'+('{:0'+str(digits)+'}').format(tile_id)
-                thisview['setup_id'] = setup_id
-
-                thisview['OriginalFile'] = mergemap['mapfile']
-
-                thisview['attributes'] = dict()
-                thisview['attributes']['tile'] = dict({'id':tile_id})
-
-                thisview['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
-                thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-                thisview['trafo'] = dict()
-                thisview['trafo']['Translation'] = tf_tr
-                thisview['trafo']['MapScaleMat'] = tf_sc
-
-                mat_tpos = np.concatenate(([[1,0],[0,1]],[[0,mergemap['tilepx'][tile_id][0]],[0,mergemap['mergeheader']['ysize']-mergemap['mapheader']['ysize']-mergemap['tilepx'][tile_id][1]]]),axis=1)
-                mat_tpos = np.concatenate((mat_tpos,[[0,0,1,0],[0,0,0,1]]))
-
-                thisview['trafo']['TilePosition'] = tf.matrix_to_transformation(mat_tpos).tolist()
-
-                setup_id = setup_id+1
-
-                data  = mergemap['im'][:,:,tile_id]
-                thisview['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
-                thisview['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
-                bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors)
-
-
-        else:
-            # merged image exists
-            data = mergemap['im']#.copy()
-
-            setup_id = 0
-
-            view=dict()
-
-            view['resolution'] = [pxs,pxs,pxs]
-            view['setup_id'] = setup_id
-            view['setup_name'] = itemname
-
-            view['OriginalFile'] = mergemap['mergefile']
-
-            view['attributes'] = dict()
-
-            view['trafo'] = dict()
-            view['trafo']['Translation'] = tf_tr
-            view['trafo']['MapScaleMat'] = tf_sc
-
-            # Light microscopy image (CLEM)
-            if 'Imported' in item.keys():
-                # assign channels
-                view['attributes']['displaysettings']=dict({'id':setup_id,'Projection_Mode':'Sum','isset':'true'})
-
-                if item['MapMinMaxScale'] == ['0', '0']:
-                    #RGB
-                    for chidx,ch in enumerate(['R','G','B']):
-                        data0 = data[:,:,chidx]
-                        view['attributes']['channel'] = dict({'id':int(chidx)})
-                        view['attributes']['displaysettings']['min']=data0.min()
-                        view['attributes']['displaysettings']['max']=data0.max()
-
-                        view['setup_id'] = setup_id
-                        view['setup_name'] = itemname + ch
-
-
-                        view['attributes']['displaysettings']['id'] = setup_id
-                        view['attributes']['displaysettings']['color'] = bdv.colors[ch]
-
-                        if data0.max()>0: # ignore empty images
-                            bdv.write_bdv(outfile,data0,view,downscale_factors)
-                            setup_id = setup_id + 1
-
-                else:
-                    # single channel, check if color description in item label
-                    if itemname[-3:][itemname[-3:].rfind('_')+1:] in bdv.colors.keys():
-                        view['attributes']['displaysettings']['color'] = bdv.colors[itemname[-3:][itemname[-3:].rfind('_')+1:]]
-                    elif mfbase[-3:][mfbase[-3:].rfind('_')+1:] in bdv.colors.keys():
-                        view['attributes']['displaysettings']['color'] = bdv.colors[mfbase[-3:][mfbase[-3:].rfind('_')+1:]]
-
-                    view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
-                    view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
-                    bdv.write_bdv(outfile,data,view,downscale_factors)
-
-
+    
+    
             else:
-
-                view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
-                view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-                if os.path.exists(outfile+'.xml'):
-                    view['attributes']['displaysettings'] = bdv.get_displaysettings(outfile)
+                # merged image exists
+                data = mergemap['im']#.copy()
+    
+                setup_id = 0
+    
+                view=dict()
+    
+                view['resolution'] = [pxs,pxs,pxs]
+                view['setup_id'] = setup_id
+                view['setup_name'] = itemname
+    
+                view['OriginalFile'] = mergemap['mergefile']
+    
+                view['attributes'] = dict()
+    
+                view['trafo'] = dict()
+                view['trafo']['Translation'] = tf_tr
+                view['trafo']['MapScaleMat'] = tf_sc
+    
+                # Light microscopy image (CLEM)
+                if 'Imported' in item.keys():
+                    # assign channels
+                    view['attributes']['displaysettings']=dict({'id':setup_id,'Projection_Mode':'Sum','isset':'true'})
+    
+                    if item['MapMinMaxScale'] == ['0', '0']:
+                        #RGB
+                        for chidx,ch in enumerate(['R','G','B']):
+                            data0 = data[:,:,chidx]
+                            view['attributes']['channel'] = dict({'id':int(chidx)})
+                            view['attributes']['displaysettings']['min']=data0.min()
+                            view['attributes']['displaysettings']['max']=data0.max()
+    
+                            view['setup_id'] = setup_id
+                            view['setup_name'] = itemname + ch
+    
+    
+                            view['attributes']['displaysettings']['id'] = setup_id
+                            view['attributes']['displaysettings']['color'] = bdv.colors[ch]
+    
+                            if data0.max()>0: # ignore empty images
+                                bdv.write_bdv(outfile,data0,view,downscale_factors)
+                                setup_id = setup_id + 1
+    
+                    else:
+                        # single channel, check if color description in item label
+                        if itemname[-3:][itemname[-3:].rfind('_')+1:] in bdv.colors.keys():
+                            view['attributes']['displaysettings']['color'] = bdv.colors[itemname[-3:][itemname[-3:].rfind('_')+1:]]
+                        elif mfbase[-3:][mfbase[-3:].rfind('_')+1:] in bdv.colors.keys():
+                            view['attributes']['displaysettings']['color'] = bdv.colors[mfbase[-3:][mfbase[-3:].rfind('_')+1:]]
+    
+                        view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
+                        view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
+                        bdv.write_bdv(outfile,data,view,downscale_factors)
+    
+    
                 else:
-                    view['attributes']['displaysettings']['min']=data.min()#item['MapMinMaxScale'][0]
-                    view['attributes']['displaysettings']['max']=data.max()#item['MapMinMaxScale'][1]
-
-                bdv.write_bdv(outfile,data,view,downscale_factors)
-
+    
+                    view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+                    view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+    
+                    if os.path.exists(outfile+'.xml'):
+                        view['attributes']['displaysettings'] = bdv.get_displaysettings(outfile)
+                    else:
+                        view['attributes']['displaysettings']['min']=data.min()#item['MapMinMaxScale'][0]
+                        view['attributes']['displaysettings']['max']=data.max()#item['MapMinMaxScale'][1]
+    
+                    bdv.write_bdv(outfile,data,view,downscale_factors)
+    
 
 
 
@@ -344,7 +348,8 @@ if tomos:
                 continue
 
         outname = os.path.basename(base)
-        outfile = os.path.join(dirname,outname)
+        outfile = os.path.join(dirname,outname)+outformat
+    
 
         base1 = os.path.basename(base)
         parts = re.split('\.|_|\-|;| |,',base1)
@@ -541,7 +546,9 @@ if tomos:
         data0 = np.swapaxes(data,0,2)
         data1 = np.fliplr(data0)
         data2 = np.swapaxes(data1,0,2)
-
-        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster,infile=file)
+        
+        print(outfile)
+        
+        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=chunks)
 
         mfile.close()

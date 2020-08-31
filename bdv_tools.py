@@ -123,8 +123,8 @@ def write_bdv(outfile, data, view,blow_2d=1,
         view_xml = outbase+'_view.xml'
         dict2xml(view,view_xml)
 
-        n_threads = 3
-        time = 2
+        n_threads = 8
+        time = 4
         mem = 4
 
         user = os.popen('whoami').read()
@@ -134,20 +134,21 @@ def write_bdv(outfile, data, view,blow_2d=1,
         
         user = user.rstrip('\n')+'@embl.de'
         
-        submit = '/g/emcf/schorb/code/cluster/submit_slurm.py'
+        submit = '/g/emcf/schorb/code/cluster/cluster_ms/submit_slurm.py'
 
         script = '/g/emcf/schorb/code/bdv_convert/write_bdv_cluster.py'
         env = '/g/emcf/software/python/miniconda/envs/bdv'
 
-        callcmd = 'python '+ submit + ' ' + script
+        callcmd = 'python ' + submit + ' ' + script
         
-        ds_str = '\"'+str(downscale_factors)+'\"'
+        ds_str = "\' "+str(downscale_factors)+"\' "
+        chunks_str = "\' "+str(chunks)+"\' "
         
         infile = os.path.abspath(infile)
         outfile = os.path.abspath(outfile)
         view_xml = os.path.abspath(view_xml)
         
-        callcmd += ' '+' '.join([infile,outfile,view_xml,ds_str,
+        callcmd += ' '+' '.join([infile,outfile,view_xml,ds_str,chunks_str,
                                           'n_threads',str(n_threads),
                                           'mem_limit',str(mem)+'G',
                                           'time_limit',str(time),
@@ -289,12 +290,13 @@ def xml2dict(infile,root=None):
                  try:
                      item = float(item)                     
                  except ValueError:
-                     try:
-                         item = bool(item)
-                     except ValueError:                     
-                        if item[0]=='[':
-                            item = str2list(item)
-                         
+                    if item == 'True':
+                        item = True
+                    elif item == 'False':
+                        item = False
+                    elif item[0]=='[':
+                        item = str2list(item)
+                     
              d[elem.tag] = item
         else:
             d[elem.tag]=xml2dict(infile,root=elem)

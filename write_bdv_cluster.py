@@ -17,8 +17,18 @@ infile = sys.argv[1]
 outfile = sys.argv[2]
 view_xml = sys.argv[3]
 df_str = sys.argv[4]
+chunks_str = sys.argv[5]
+
+
+print(df_str)
+print(chunks_str)
 
 downscale_factors = bdv.str2list(df_str)
+chunks = list(map(int,chunks_str.strip('"[]').strip("'").split(',')))
+
+print(chunks)
+print(downscale_factors)
+
 
 if len(downscale_factors)<3:downscale_factors = None
 
@@ -55,9 +65,9 @@ elif os.path.splitext(infile)[-1].lower() in tifext:
     
 
 
-bdv.write_bdv(outfile,data,view,blow_2d=1,downscale_factors=downscale_factors,cluster=False,infile=infile)
+#bdv.write_bdv(outfile,data,view,blow_2d=1,downscale_factors=downscale_factors,cluster=False,infile=infile,chunks=chunks)
 
-os.remove(view_xml)
+#os.remove(view_xml)
 
 print('conversion to bdv on the cluster for '+ os.path.basename(infile) + ' successful.' )   
 

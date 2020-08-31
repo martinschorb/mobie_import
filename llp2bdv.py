@@ -18,7 +18,7 @@ from skimage import io
 from tkinter import Tk,messagebox,filedialog
 
 
-# base intensity normailsation on average instead of absolute minmax values
+# base intensity normalisation on average instead of absolute minmax values
 
 int_av = True
 #how many times StDev to consider
