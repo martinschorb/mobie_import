@@ -19,11 +19,7 @@ view_xml = sys.argv[3]
 df_str = sys.argv[4]
 chunks_str = sys.argv[5]
 
-
-print(df_str)
-print(chunks_str)
-
-downscale_factors = bdv.str2list(df_str)
+downscale_factors = list(map(int,df_str.strip('"[]').strip("'").split(',')))#bdv.str2list(df_str)
 chunks = list(map(int,chunks_str.strip('"[]').strip("'").split(',')))
 
 print(chunks)
@@ -41,10 +37,10 @@ view = bdv.xml2dict(view_xml)
 # read data
 
 if os.path.splitext(infile)[-1].lower() in mrcext:
-    
+
     import mrcfile as mrc
     import numpy as np
-    
+
     mfile = mrc.mmap(infile,permissive = 'True')
     data0 = mfile.data
 
@@ -56,19 +52,17 @@ if os.path.splitext(infile)[-1].lower() in mrcext:
     data0 = np.swapaxes(data0,0,2)
     data1 = np.fliplr(data0)
     data = np.swapaxes(data1,0,2)
-    
+
 elif os.path.splitext(infile)[-1].lower() in tifext:
-    
+
     from skimage import io
-    
+
     data  = io.imread(infile)
-    
+
 
 
 #bdv.write_bdv(outfile,data,view,blow_2d=1,downscale_factors=downscale_factors,cluster=False,infile=infile,chunks=chunks)
 
 #os.remove(view_xml)
 
-print('conversion to bdv on the cluster for '+ os.path.basename(infile) + ' successful.' )   
-
-
+print('conversion to bdv on the cluster for '+ os.path.basename(infile) + ' successful.' )
