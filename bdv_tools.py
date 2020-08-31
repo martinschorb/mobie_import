@@ -72,12 +72,12 @@ def write_fast_xml(outname,views):
     pybdv.metadata._initialize_attributes(viewsets,views[0]['attributes'])
 
     for thisview in views:
-        
+
         thisFMap = ET.SubElement(files,'FileMapping')
         thisFMap.set("view_setup",str(thisview['setup_id']))
         thisFMap.set("timepoint",'0')
         thisFMap.set("series",'0')
-        
+
         pybdv.metadata._update_attributes(viewsets, thisview['attributes'],True)
 
         if 'channel' in thisview['attributes'].keys():
@@ -128,26 +128,29 @@ def write_bdv(outfile, data, view,blow_2d=1,
         mem = 4
 
         user = os.popen('whoami').read()
-        
+
         #in case of domain:
-        user = user[user.find('\\')+1:]        
-        
+        user = user[user.find('\\')+1:]
+
         user = user.rstrip('\n')+'@embl.de'
-        
+
         submit = '/g/emcf/schorb/code/cluster/cluster_ms/submit_slurm.py'
 
         script = '/g/emcf/schorb/code/bdv_convert/write_bdv_cluster.py'
         env = '/g/emcf/software/python/miniconda/envs/bdv'
 
         callcmd = 'python ' + submit + ' ' + script
-        
+
         ds_str = "\' "+str(downscale_factors)+"\' "
+        ds_str = ds_str.replace(' ','')
+
         chunks_str = "\' "+str(chunks)+"\' "
-        
+        chunks_str = chunks_str.replace(' ','')
+
         infile = os.path.abspath(infile)
         outfile = os.path.abspath(outfile)
         view_xml = os.path.abspath(view_xml)
-        
+
         callcmd += ' '+' '.join([infile,outfile,view_xml,ds_str,chunks_str,
                                           'n_threads',str(n_threads),
                                           'mem_limit',str(mem)+'G',
@@ -192,9 +195,9 @@ def write_bdv(outfile, data, view,blow_2d=1,
             data1 = np.uint16((data-data.min())/data.max()*65535)
             view['attributes']['displaysettings']['min']='0'
             view['attributes']['displaysettings']['max']='65535'
-        
 
-        sname = view['setup_name']        
+
+        sname = view['setup_name']
 
         print('Converting '+ sname + ' into BDV format.')
 
@@ -285,10 +288,10 @@ def xml2dict(infile,root=None):
         if len(elem)==0:
              item = elem.text
              try:
-                 item = int(item)                 
+                 item = int(item)
              except ValueError:
                  try:
-                     item = float(item)                     
+                     item = float(item)
                  except ValueError:
                     if item == 'True':
                         item = True
@@ -296,7 +299,7 @@ def xml2dict(infile,root=None):
                         item = False
                     elif item[0]=='[':
                         item = str2list(item)
-                     
+
              d[elem.tag] = item
         else:
             d[elem.tag]=xml2dict(infile,root=elem)
@@ -309,27 +312,27 @@ def xml2dict(infile,root=None):
 
 def str2list(instr):
     # find dim
-    
+
     dim=0
-    
+
     instr=str(instr)
-    
+
     for dim in range(0,len(instr)):
         if instr[dim]=='[':
             continue
         else:
             break
-    
+
     sepstr = ', ' + '[' * (dim-1)
 
     df1 = instr[dim:-1].split(sepstr)
-    
+
     outlist = list()
-    
-    if dim > 1:    
-        for item in df1:            
+
+    if dim > 1:
+        for item in df1:
             outlist.append(str2list('[' * (dim-1) + item))
-    else:           
+    else:
         for item in df1:
             try:
                 outlist.append(int(item))
@@ -340,33 +343,33 @@ def str2list(instr):
                     if item == 'True': outlist.append(True)
                     elif item == 'False': outlist.append(False)
                     elif item == 'None': outlist.append(None)
-                    else: outlist.append(item)                
+                    else: outlist.append(item)
 
-                
-    
+
+
     return outlist
 
 #%%
-    
+
 #=================================================================================
-    
+
 def str2dict(fun_in):
-    
+
     if type(fun_in)==list:
         inlist = fun_in
     else:
         instr = str(fun_in.strip('{}'))
         inlist = instr.split(', ')
-    
-    
+
+
     output = dict()
-    
+
     for elem in inlist:
-        keyval = elem.split(': ')     
-        
+        keyval = elem.split(': ')
+
         key = str(keyval[0]).strip('\'\"')
         item = str(keyval[1]).strip('\'\"')
-           
+
         if item.startswith('{'):
             output[key] = str2dict(item)
         else:
@@ -380,10 +383,7 @@ def str2dict(fun_in):
                  except ValueError:
                      if item[0]=='[':
                          item = str2list(item)
-                         
+
              output[key] = item
 
     return output
-    
-
-
