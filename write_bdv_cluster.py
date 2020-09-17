@@ -61,8 +61,8 @@ elif os.path.splitext(infile)[-1].lower() in tifext:
 
 
 
-#bdv.write_bdv(outfile,data,view,blow_2d=1,downscale_factors=downscale_factors,cluster=False,infile=infile,chunks=chunks)
+bdv.write_bdv(outfile,data,view,blow_2d=1,downscale_factors=downscale_factors,cluster=False,infile=infile,chunks=chunks)
 
-#os.remove(view_xml)
+os.remove(view_xml)
 
 print('conversion to bdv on the cluster for '+ os.path.basename(infile) + ' successful.' )
