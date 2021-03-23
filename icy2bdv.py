@@ -36,6 +36,8 @@ if not os.path.exists(dirname):
     os.makedirs(dirname)
 
 
+#%%
+
 tk_root = tk.Tk()
 tk_root.withdraw()
 tk_root.wm_attributes("-topmost", 1)
@@ -102,7 +104,7 @@ if exist_bdv:
             # find tile id for any VS id            
             for viewsetup in vs:
                 vs_id = int(viewsetup.find('id').text)
-                vs_attr = viewsetup.find('Attributes')
+                vs_attr = viewsetup.find('attributes')
                 
                 vs_tile = int(vs_attr.find('tile').text)               
                                 
@@ -258,7 +260,7 @@ else:
         
         
             
-            
+#%%            
             
             
 tk_root2 = tk.Tk()
@@ -364,6 +366,10 @@ if not tfm_TilePosition == None: view['trafo']['TilePosition'] = tfm_TilePositio
 tf_fm = tf.matrix_to_transformation(fm_mat).tolist()  
 view['trafo'][tfkey] = tf_fm
 
+
+
+#%%
+
 if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
 #RGB                    
     for chidx,ch in enumerate(['R','G','B']):
@@ -382,13 +388,34 @@ if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
         if data0.max()>0: # ignore empty images
             bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
             setup_id = setup_id + 1
+            
+            
+elif all((len(data_fm.shape)==3, data_fm.shape[2] > 1)):
+    for chidx in range(data_fm.shape[2]):
+        data0 = data_fm[:,:,chidx]
+        view['attributes']['channel'] = dict({'id':int(chidx)})
+        view['attributes']['displaysettings']['min']=data0.min()
+        view['attributes']['displaysettings']['max']=data0.max()
+        
+        view['setup_id'] = setup_id
+        view['setup_name'] = fmf_base + '_Ch' + str(chidx)
+        
+        
+        view['attributes']['displaysettings']['id'] = setup_id
+        
+        if data0.max()>0: # ignore empty images
+            bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+            setup_id = setup_id + 1
+    
 else:                    
 # single channel, check if color description in base file name
     if fmf_base[-3:][fmf_base[-3:].rfind('_')+1:] in bdv.colors.keys(): 
         view['attributes']['displaysettings']['color'] = bdv.colors[fmf_base[-3:][fmf_base[-3:].rfind('_')+1:]]                   
-      
-        view['attributes']['displaysettings']['min']=data_fm.min()
-        view['attributes']['displaysettings']['max']=data_fm.max()
-        bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
 
 
+    view['attributes']['displaysettings']['min']=data_fm.min()
+    view['attributes']['displaysettings']['max']=data_fm.max()
+    bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+
+    
+        
