@@ -54,7 +54,7 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
 
     outfile = os.path.join(outdir,re.sub('/','_',base))+outformat
     
-    if os.path.exists(os.path.join(outdir,re.sub('/','_',base)+'.xml'):
+    if os.path.exists(os.path.join(outdir,re.sub('/','_',base)+'.xml')):
         print('Skipping '+base+'. It already exists.')
         continue
     
