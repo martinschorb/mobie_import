@@ -9,7 +9,7 @@ import os
 
 
 
-mrcext = ['.mrc','.rec','.st']
+mrcext = ['.join','.mrc','.rec','.st']
 tifext = ['.tif','.tiff']
 
 
@@ -19,7 +19,8 @@ view_xml = sys.argv[3]
 df_str = sys.argv[4]
 chunks_str = sys.argv[5]
 
-downscale_factors = []#list(map(int,df_str.strip('"[]').strip("'").split(',')))#bdv.str2list(df_str)
+downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
+
 chunks = list(map(int,chunks_str.strip('"[]').strip("'").split(',')))
 
 print(chunks)

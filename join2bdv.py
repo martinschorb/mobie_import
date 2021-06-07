@@ -79,17 +79,18 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
     view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
 
-    data = mfile.data
+    # data = mfile.data
 
 
-    # check if volume is rotated
-    if data.shape[0]/data.shape[1]>5:
-        data = np.swapaxes(data,0,1)
+    # # check if volume is rotated
+    # if data.shape[0]/data.shape[1]>5:
+    #     data = np.swapaxes(data,0,1)
 
-    data0 = np.swapaxes(data,0,2)
-    data1 = np.fliplr(data0)
-    data2 = np.swapaxes(data1,0,2)
+    # data0 = np.swapaxes(data,0,2)
+    # data1 = np.fliplr(data0)
+    # data2 = np.swapaxes(data1,0,2)
 
     print(outfile)
-
-    bdv.write_bdv(outfile,data2,view,outf='.n5',blow_2d=zstretch,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=chunks)
+    
+    
+    bdv.write_bdv(outfile,file,view,outf='.n5',blow_2d=zstretch,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=chunks)

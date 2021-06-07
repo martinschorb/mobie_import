@@ -147,7 +147,7 @@ def write_bdv(outfile, data, view,blow_2d=1,
         chunks_str = "\' "+str(chunks)+"\' "
         chunks_str = chunks_str.replace(' ','')
 
-        infile = os.path.abspath(infile)
+        infile = os.path.abspath(data)
         outfile = os.path.abspath(outfile)
         view_xml = os.path.abspath(view_xml)
 
