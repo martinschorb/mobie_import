@@ -36,6 +36,8 @@ downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 indir = '/g/schwab/Tobias/Tomography/joined/'
 suffix = 'ALSM' #sys.argv[1]
+
+
 indir = os.path.join(indir,suffix)
 print(indir)
 
@@ -61,7 +63,7 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     mat[2,2] = tomopx*zstretch
     mat[3,3] = 1
     
-    tf_tr = tf.matrix_to_transformation(mat)
+    tf_tr = tf.matrix_to_transformation(mat).tolist()
 
     setup_id = 0
 
