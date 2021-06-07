@@ -35,11 +35,11 @@ chunks = list((16,192,192))
 downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 indir = '/g/schwab/Tobias/Tomography/joined/'
-
+suffix = 'ALSM' #sys.argv[1]
 indir = os.path.join(indir,suffix)
 print(indir)
 
-suffix = 'ALSM' #sys.argv[1]
+
 
 outdir = os.path.join('/g/schwab/Tobias/MoBIE/',suffix)
 
