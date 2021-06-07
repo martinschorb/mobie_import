@@ -155,9 +155,9 @@ def write_bdv(outfile, data, view,blow_2d=1,
 
         infile = os.path.abspath(data)
         outfile = os.path.abspath(outfile)
-        view_xml = os.path.abspath(view_xml)
+        view_json = os.path.abspath(view_json)
 
-        callcmd += ' '+' '.join([infile,outfile,view_xml,ds_str,chunks_str,
+        callcmd += ' '+' '.join([infile,outfile,view_json,ds_str,chunks_str,
                                           'n_threads',str(n_threads),
                                           'mem_limit',str(mem)+'G',
                                           'time_limit',str(time),
