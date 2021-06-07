@@ -8,6 +8,8 @@ import pybdv
 import xml.etree.ElementTree as ET
 from pybdv import transformations as tf
 import os
+import json
+
 
 #from clusterms import submit_slurm
 
@@ -120,8 +122,12 @@ def write_bdv(outfile, data, view,blow_2d=1,
     if cluster:
 
         #outdir = os.path.dirname(outfile)
-        view_xml = outbase+'_view.xml'
-        dict2xml(view,view_xml)
+        view_json = outbase+'_view.json'
+        with open(view_json, 'w') as f:
+            json.dump(view, f)
+        
+        # view_xml = outbase+'_view.xml'
+        # dict2xml(view,view_xml)
 
         n_threads = 8
         time = 4

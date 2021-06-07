@@ -6,7 +6,7 @@ import bdv_tools as bdv
 import sys
 import os
 
-
+import json
 
 
 mrcext = ['.join','.mrc','.rec','.st']
@@ -23,8 +23,8 @@ downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 chunks = list(map(int,chunks_str.strip('"[]').strip("'").split(',')))
 
-print(chunks)
-print(downscale_factors)
+# print(chunks)
+# print(downscale_factors)
 
 
 if len(downscale_factors)<3:downscale_factors = None
@@ -32,7 +32,7 @@ if len(downscale_factors)<3:downscale_factors = None
 
 print('starting conversion to bdv on the cluster for '+ os.path.basename(infile))
 
-view = bdv.xml2dict(view_xml)
+view = json.load(open(view_xml)) #bdv.xml2dict(view_xml)
 
 
 # read data

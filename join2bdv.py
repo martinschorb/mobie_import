@@ -36,10 +36,12 @@ downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 indir = '/g/schwab/Tobias/Tomography/joined/'
 
-indir = os.path.join(indir,sys.argv[1])
+indir = os.path.join(indir,suffix)
 print(indir)
 
-outdir = os.path.join('/g/schwab/Tobias/MoBIE/',sys.argv[1])
+suffix = 'ALSM' #sys.argv[1]
+
+outdir = os.path.join('/g/schwab/Tobias/MoBIE/',suffix)
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -59,7 +61,7 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     mat[2,2] = tomopx*zstretch
     mat[3,3] = 1
     
-    tf_tr = tf.matrix_to_transformation(mat).tolist()
+    tf_tr = tf.matrix_to_transformation(mat)
 
     setup_id = 0
 
@@ -74,7 +76,7 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     view['trafo'] = dict()
     view['trafo']['Scaling'] = tf_tr
 
-    # view['attributes'] = dict()
+    view['attributes'] = dict()
 
     # view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
     # view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
