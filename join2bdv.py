@@ -74,10 +74,10 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     view['trafo'] = dict()
     view['trafo']['Scaling'] = tf_tr
 
-    view['attributes'] = dict()
+    # view['attributes'] = dict()
 
-    view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
-    view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+    # view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
+    # view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
 
     # data = mfile.data
 

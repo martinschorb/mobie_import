@@ -179,23 +179,23 @@ def write_bdv(outfile, data, view,blow_2d=1,
 
         data1=data
 
-        if data.dtype.kind=='i':
-            if data.dtype.itemsize == 1:
-                data1 = np.uint8(data-data.min())
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-            elif data.dtype.itemsize == 2:
-                data1 = np.uint16(data-data.min())
-                view['attributes']['displaysettings']['min']='0'
-                view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
-        elif not data.dtype.kind=='u':
-            data1 = np.uint16((data-data.min())/data.max()*65535)
-            view['attributes']['displaysettings']['min']='0'
-            view['attributes']['displaysettings']['max']='65535'
-        elif data.dtype.itemsize > 2:
-            data1 = np.uint16((data-data.min())/data.max()*65535)
-            view['attributes']['displaysettings']['min']='0'
-            view['attributes']['displaysettings']['max']='65535'
+        # if data.dtype.kind=='i':
+        #     if data.dtype.itemsize == 1:
+        #         data1 = np.uint8(data-data.min())
+        #         view['attributes']['displaysettings']['min']='0'
+        #         view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+        #     elif data.dtype.itemsize == 2:
+        #         data1 = np.uint16(data-data.min())
+        #         view['attributes']['displaysettings']['min']='0'
+        #         view['attributes']['displaysettings']['max']=str(int(view['attributes']['displaysettings']['max'])-data.min())
+        # elif not data.dtype.kind=='u':
+        #     data1 = np.uint16((data-data.min())/data.max()*65535)
+        #     view['attributes']['displaysettings']['min']='0'
+        #     view['attributes']['displaysettings']['max']='65535'
+        # elif data.dtype.itemsize > 2:
+        #     data1 = np.uint16((data-data.min())/data.max()*65535)
+        #     view['attributes']['displaysettings']['min']='0'
+        #     view['attributes']['displaysettings']['max']='65535'
 
 
         sname = view['setup_name']
