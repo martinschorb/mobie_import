@@ -44,7 +44,7 @@ outdir = os.path.join('/g/schwab/Tobias/MoBIE/',sys.argv[1])
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-for file in glob.iglob(indir+'**/*.join', recursive=True):
+for file in glob.iglob(indir+'/**/*.join', recursive=True):
     
     base = os.path.splitext(file.split(indir)[1])[0]
 
