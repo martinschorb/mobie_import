@@ -90,7 +90,7 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     # data1 = np.fliplr(data0)
     # data2 = np.swapaxes(data1,0,2)
 
-    print(outfile)
+   # print(outfile)
     
     
     bdv.write_bdv(outfile,file,view,outf='.n5',blow_2d=zstretch,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=chunks)
