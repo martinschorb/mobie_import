@@ -37,6 +37,7 @@ downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 indir = '/g/schwab/Tobias/Tomography/joined/'
 
 indir = os.path.join(indir,sys.argv[1])
+print(indir)
 
 outdir = os.path.join('/g/schwab/Tobias/MoBIE/',sys.argv[1])
 
@@ -77,9 +78,6 @@ for file in glob.iglob(indir+'**/*.join', recursive=True):
 
     view['attributes']['displaysettings'] = dict({'id':setup_id,'color':bdv.colors['W'],'isset':'true'})
     view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-    view['attributes']['displaysettings']['min']=-127
-    view['attributes']['displaysettings']['max']=127
 
     data = mfile.data
 
