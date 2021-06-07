@@ -53,7 +53,11 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     base = os.path.splitext(file.split(indir)[1])[0]
 
     outfile = os.path.join(outdir,re.sub('/','_',base))+outformat
-
+    
+    if os.path.exists(outfile):
+        print('Skipping '+base+'. It already exists.')
+        continue
+    
     # get pixel size
 
     mfile = mrc.mmap(file,permissive = 'True')
