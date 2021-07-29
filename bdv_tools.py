@@ -129,9 +129,9 @@ def write_bdv(outfile, data, view,blow_2d=1,
         # view_xml = outbase+'_view.xml'
         # dict2xml(view,view_xml)
 
-        n_threads = 8
+        n_threads = 3
         time = 10
-        mem = 12
+        mem = 6
 
         user = os.popen('whoami').read()
 

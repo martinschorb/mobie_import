@@ -55,7 +55,11 @@ tfm_TilePosition = None
 if exist_bdv:
     messg1 = mb.showinfo(title = 'Select BDV XML', message = 'Select BDV description XML for fixed data (usually EM).',parent = tk_root)
     bdvxml_em = filedialog.askopenfilename(title = 'Select BDV XML of fixed image (EM).', filetypes = [('XML','*.xml')], initialdir = cwd,parent = tk_root)
-    
+
+    wdir = os.path.dirname(bdvxml_em)
+
+    os.chdir(wdir)
+        
     bdv_em_root = ET.parse(bdvxml_em)
     
     if not bdv_em_root.find('OriginalFile')==None:

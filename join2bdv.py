@@ -17,6 +17,9 @@ import re
 import sys
 import os
 
+import time
+import shutil
+
 from skimage import io
 
 import bdv_tools as bdv
@@ -35,7 +38,7 @@ chunks = list((16,192,192))
 downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 
 indir = '/g/schwab/Tobias/Tomography/joined/'
-suffix = 'ALSM' #sys.argv[1]
+suffix = 'CTRL' #sys.argv[1]
 
 
 indir = os.path.join(indir,suffix)
@@ -49,20 +52,28 @@ if not os.path.exists(outdir):
     os.makedirs(outdir)
 
 for file in glob.iglob(indir+'/**/*.join', recursive=True):
-    
     base = os.path.splitext(file.split(indir)[1])[0]
-
+        
     outfile = os.path.join(outdir,re.sub('/','_',base))+outformat
     
     if os.path.exists(os.path.join(outdir,re.sub('/','_',base)+'.xml')):
         print('Skipping '+base+'. It already exists.')
         continue
+
+    if os.path.exists(outfile):
+        print('re-doing '+base+'.')
+        shutil.rmtree(outfile)
+        #continue
+    
+    time.sleep(3)
+
+    print('converting '+base+' into BDV format.')
     
     # get pixel size
 
     mfile = mrc.mmap(file,permissive = 'True')
     tomopx = mfile.voxel_size.x / 10000 # in um
-    
+    del(mfile)
     mat=np.eye(4)*tomopx
     mat[2,2] = tomopx*zstretch
     mat[3,3] = 1
@@ -102,3 +113,4 @@ for file in glob.iglob(indir+'/**/*.join', recursive=True):
     
     
     bdv.write_bdv(outfile,file,view,outf='.n5',blow_2d=zstretch,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=chunks)
+    del(view)

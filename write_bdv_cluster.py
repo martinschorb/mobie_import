@@ -49,7 +49,11 @@ if os.path.splitext(infile)[-1].lower() in mrcext:
     # check if volume is rotated
     if data0.shape[0]/data0.shape[1]>5:
         data0 = np.swapaxes(data0,0,1)
+    
+    if mfile.header.mode == 0:
+      data0 = np.uint8(data0+127)
 
+    
     data0 = np.swapaxes(data0,0,2)
     data1 = np.fliplr(data0)
     data = np.swapaxes(data1,0,2)
