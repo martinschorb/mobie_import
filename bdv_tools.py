@@ -182,7 +182,8 @@ def write_bdv(outfile, data, view,blow_2d=1,
         if ndim < 3:
             assert ndim == 2, "Only support 2d"
             data=np.expand_dims(data,axis=0)
-
+    
+        
         data1=data
 
         # if data.dtype.kind=='i':

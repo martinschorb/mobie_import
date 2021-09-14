@@ -28,9 +28,11 @@ bdv_unit = 'um'
 
 timept = 0
 
-outformat='.h5'
+outformat='.n5'
 
-chunks = list((16,192,192))
+mapchunks = list((1,1024,1024))
+tomochunks = list((32,192,192))
+
 downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,2,2],[1,4,4]))
 blow_2d = 1
 
@@ -122,7 +124,7 @@ for idx,item in enumerate(allitems):
 
 
         # generate the individual transformation matrices
-        # 1)  The scale and rotation information form the map item
+        # 1)  The scale and rotation information from the map item
         mat_s = np.concatenate((mat,[[0,0],[0,0]]),axis=1)
         mat_s = np.concatenate((mat_s,[[0,0,1,0],[0,0,0,1]]))
 
@@ -236,7 +238,7 @@ for idx,item in enumerate(allitems):
                     data  = mergemap['im'][:,:,tile_id]
                     thisview['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
                     thisview['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
-                    bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors)
+                    bdv.write_bdv(outfile,data,thisview,blow_2d,downscale_factors,chunks=mapchunks)
 
 
             else:
@@ -280,7 +282,7 @@ for idx,item in enumerate(allitems):
                             view['attributes']['displaysettings']['color'] = bdv.colors[ch]
 
                             if data0.max()>0: # ignore empty images
-                                bdv.write_bdv(outfile,data0,view,downscale_factors)
+                                bdv.write_bdv(outfile,data0,view,downscale_factors,chunks=mapchunks)
                                 setup_id = setup_id + 1
 
                     else:
@@ -292,7 +294,7 @@ for idx,item in enumerate(allitems):
 
                         view['attributes']['displaysettings']['min']=item['MapMinMaxScale'][0]
                         view['attributes']['displaysettings']['max']=item['MapMinMaxScale'][1]
-                        bdv.write_bdv(outfile,data,view,downscale_factors)
+                        bdv.write_bdv(outfile,data,view,downscale_factors,chunks=mapchunks)
 
 
                 else:
@@ -306,7 +308,7 @@ for idx,item in enumerate(allitems):
                         view['attributes']['displaysettings']['min']=data.min()#item['MapMinMaxScale'][0]
                         view['attributes']['displaysettings']['max']=data.max()#item['MapMinMaxScale'][1]
 
-                    bdv.write_bdv(outfile,data,view,downscale_factors)
+                    bdv.write_bdv(outfile,data,view,downscale_factors,chunks=mapchunks)
 
 
 
@@ -539,16 +541,21 @@ if tomos:
         data = mfile.data
 
 
-        # check if volume is rotated
-        if data.shape[0]/data.shape[1]>5:
-            data = np.swapaxes(data,0,1)
 
-        data0 = np.swapaxes(data,0,2)
-        data1 = np.fliplr(data0)
-        data2 = np.swapaxes(data1,0,2)
 
-        print(outfile)
-
-        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=chunks)
+        
+        if cluster:
+            data2 = file
+        else:
+                    # check if volume is rotated
+            if data.shape[0]/data.shape[1]>5:
+                data = np.swapaxes(data,0,1)
+    
+            data0 = np.swapaxes(data,0,2)
+            data1 = np.fliplr(data0)
+            data2 = np.swapaxes(data1,0,2)
+            
+            
+        bdv.write_bdv(outfile,data2,view,blow_2d=blow_2d,downscale_factors=downscale_factors,cluster=cluster,infile=file,chunks=tomochunks)
 
         mfile.close()
