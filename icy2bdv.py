@@ -22,6 +22,9 @@ from pybdv import transformations as tf
 
 import bdv_tools as bdv
 
+
+mapchunks = list((1,1024,1024))
+
 #%%
 
 
@@ -31,6 +34,8 @@ import bdv_tools as bdv
 cwd = os.getcwd()
 
 dirname = 'bdv_icy'
+
+file_format = '.n5'
 
 if not os.path.exists(dirname):
     os.makedirs(dirname)
@@ -128,7 +133,7 @@ if exist_bdv:
     for viewreg in vregs:
         if viewreg.attrib['setup'] == target_sid:
             for viewtf in viewreg:
-                tforms[viewtf.find('Name').text] =  list(map(float,viewtf.find('affine').text.split(' ')))
+                tforms[viewtf.find('name').text] =  list(map(float,viewtf.find('affine').text.split(' ')))
     
     
 else:
@@ -222,7 +227,7 @@ else:
             thisview['attributes']['displaysettings']['Projection_Mode'] = 'Average'
             
             
-            bdv.write_bdv(outname,data_em,thisview,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+            bdv.write_bdv(outname,data_em,thisview,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),chunks = mapchunks,bdv_unit='px')
 
             
             
@@ -260,7 +265,7 @@ else:
         view['trafo']['Icy_fixed_transformation'] = tf_tr
         
         outname = os.path.join(dirname,os.path.splitext(view['setup_name'])[0])
-        bdv.write_bdv(outname,data_em,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+        bdv.write_bdv(outname,data_em,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),chunks = mapchunks,bdv_unit='px')
         
         
             
@@ -390,7 +395,7 @@ if all((len(data_fm.shape)==3, data_fm.shape[2] == 3, data_fm.dtype=='uint8')):
         view['attributes']['displaysettings']['color'] = bdv.colors[ch]
         
         if data0.max()>0: # ignore empty images
-            bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+            bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px',chunks = mapchunks,outf=file_format)
             setup_id = setup_id + 1
             
             
@@ -408,7 +413,7 @@ elif all((len(data_fm.shape)==3, data_fm.shape[2] > 1)):
         view['attributes']['displaysettings']['id'] = setup_id
         
         if data0.max()>0: # ignore empty images
-            bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+            bdv.write_bdv(outname,data0,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px',chunks = mapchunks,outf=file_format)
             setup_id = setup_id + 1
     
 else:                    
@@ -419,7 +424,7 @@ else:
 
     view['attributes']['displaysettings']['min']=data_fm.min()
     view['attributes']['displaysettings']['max']=data_fm.max()
-    bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px')
+    bdv.write_bdv(outname,data_fm,view,downscale_factors = list(([1,2,2],[1,2,2],[1,2,2],[1,4,4])),bdv_unit='px',chunks = mapchunks,outf=file_format)
 
     
         
