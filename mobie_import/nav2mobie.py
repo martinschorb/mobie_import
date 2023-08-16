@@ -49,8 +49,8 @@ tomodir = 'tomo/done'
 recdir = 'tomo/done'
 
 # %%
-
-navfile = sys.argv[1]
+navfile = '/home/schorb/s/data/AutoCLEM/nav2.nav'
+# navfile = sys.argv[1]
 # file name navigator
 
 navdir = os.path.dirname(navfile)
@@ -96,7 +96,7 @@ dataset = os.path.basename(navdir)
 
 mapinfo = list()
 
-for idx, item in enumerate(allitems):
+for idx, item in enumerate(allitems[2:]):
     if item['Type'][0] == '2':  ## item is a map
         if not skipmaps:
             if 'Draw' in item.keys():
@@ -154,39 +154,49 @@ for idx, item in enumerate(allitems):
             if 'Imported' in item.keys():
                 # assign channels
 
-                if item['MapMinMaxScale'] == ['0', '0']:
+                if item['MapMinMaxScale'] == ['0', '0'] and mergemap['im'].ndim > 2:
                     # RGB
-                    sourcedisplays=[]
-                    sourcetransforms=[]
-                    imnames=[]
-                    
+                    sourcedisplays = []
+                    sourcetransforms = []
+                    imnames = []
+                    idxoffset = 0
+
                     for chidx, ch in enumerate(['R', 'G', 'B']):
                         data0 = mergemap['im'][:, :, chidx]
-                        imnames.append(itemname + '_' + ch)
 
-                        if data0.max() > 0:  # ignore empty images
+                        if data0.max() == 0:  # ignore empty images
+                            idxoffset += 1
+                        else:
                             tforms = []
-                            sourcedisplays.append(mobie.metadata.get_image_display(imnames[chidx], imnames[chidx]))
-                            sourcedisplays[chidx]['imageDisplay']['contrastLimits'] = [data0.min(), data0.max()]
-                            sourcedisplays[chidx]['imageDisplay']['color'] = bdv.colors[ch]
+                            imnames.append(itemname + '_' + ch)
+                            sourcedisplays.append(mobie.metadata.get_image_display(imnames[chidx - idxoffset],
+                                                                                   [imnames[chidx - idxoffset]]))
 
-                            tforms.append(mobie.metadata.get_affine_source_transform([imnames[chidx]], tf_sc))
-                            tforms.append(mobie.metadata.get_affine_source_transform([imnames[chidx]], tf_tr))
+                            sourcedisplays[chidx - idxoffset]['imageDisplay']['contrastLimits'] = [data0.min(),
+                                                                                                   data0.max()]
+
+                            sourcedisplays[chidx - idxoffset]['imageDisplay']['color'] = bdv.colors[ch]
+
+                            tforms.append(mobie.metadata.get_affine_source_transform([imnames[chidx - idxoffset]],
+                                                                                     tf_sc))
+                            tforms.append(mobie.metadata.get_affine_source_transform([imnames[chidx - idxoffset]],
+                                                                                     tf_tr))
                             sourcetransforms.extend(tforms)
 
-                            thisview = mobie.metadata.get_view([imnames[chidx]], ['image'], [imnames[chidx]],
-                                                               display_settings=[sourcedisplays[chidx]],
+                            thisview = mobie.metadata.get_view([imnames[chidx - idxoffset]], ['image'],
+                                                               [[imnames[chidx - idxoffset]]],
+                                                               display_settings=[sourcedisplays[chidx - idxoffset]],
                                                                menu_name='FM',
                                                                is_exclusive=False,
                                                                source_transforms=tforms)
 
                             mobie.add_image(input_path=mergemap['mapfile'],
-                                input_key='data',
+                                input_key=(chidx, 2),
                                 root=mobie_root + '/data',
                                 dataset_name=dataset,
-                                image_name=imnames[chidx],
+                                image_name=imnames[chidx - idxoffset],
                                 view=thisview,
-                                resolution=tuple([np.round(pxs,4)]*2),
+                                resolution=tuple([np.round(pxs,4)] * 2),
                                 chunks=mapchunks,
                                 scale_factors=downscale_factors_map,
                                 target='local',
@@ -194,15 +204,21 @@ for idx, item in enumerate(allitems):
                                 file_format=outformat,
                                 unit=unit)
 
-                    rgbview = mobie.metadata.get_view([itemname], ['image'] * 3, imnames,
+                    rgbview = mobie.metadata.get_view(imnames, ['image'] * (3 - idxoffset), [[i] for i in imnames],
                                                       display_settings=sourcedisplays,
                                                       menu_name='FM',
                                                       is_exclusive=False,
                                                       source_transforms=sourcetransforms)
 
-
+                    mobie.metadata.dataset_metadata.add_view_to_dataset(os.path.join(mobie_root, 'data', dataset),
+                                                                        itemname + "_RGB",
+                                                                        rgbview)
 
                 else:
+                    continue
+
+
+
                     # single channel, check if color description in item label
                     if itemname[-3:][itemname[-3:].rfind('_') + 1:] in bdv.colors.keys():
                         sourcedisplays[chidx]['imageDisplay']['color'] = bdv.colors[
@@ -214,6 +230,8 @@ for idx, item in enumerate(allitems):
                     sourcedisplays[chidx]['imageDisplay']['contrastLimits'] = item['MapMinMaxScale']
 
             else:
+                continue
+
 
                 view['attributes']['displaysettings'] = dict(
                     {'id': setup_id, 'color': bdv.colors['W'], 'isset': 'true'})
@@ -228,7 +246,7 @@ for idx, item in enumerate(allitems):
                 bdv.write_bdv(outfile, data, view, downscale_factors, chunks=mapchunks)
 
 
-            mobie.add_image(input_path=mergemap['mergefile'],
+                mobie.add_image(input_path=mergemap['mergefile'],
                             input_key='data',
                             root=mobie_root + '/data',
                             dataset_name=dataset,
@@ -246,7 +264,7 @@ for idx, item in enumerate(allitems):
             # views = ds['views']
 
 
-        mapinfo.append([idx, pxs, itemname, mat])
+        # mapinfo.append([idx, pxs, itemname, mat])
 
 print('done writing maps')
 

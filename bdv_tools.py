@@ -16,11 +16,11 @@ import json
 
 colors=dict()
 
-colors['R'] = '255 0 0 255'
-colors['G'] = '0 255 0 255'
-colors['B'] = '0 0 255 255'
-colors['W'] = '255 255 255 255'
-colors['BF'] = '255 255 255 255'
+colors['R'] = '255-0-0-255'
+colors['G'] = '0-255-0-255'
+colors['B'] = '0-0-255-255'
+colors['W'] = '255-255-255-255'
+colors['BF'] = '255-255-255-255'
 
 
 # functions to help playing with BDV
