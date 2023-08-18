@@ -52,7 +52,7 @@ tomodir = 'tomo/done'
 recdir = 'tomo/done'
 
 # %%
-navfile = '/home/schorb/s/data/AutoCLEM/nav2.nav'
+navfile = '/home/schorb/s/data/AutoCLEM/clem.nav'
 # navfile = sys.argv[1]
 # file name navigator
 
@@ -180,9 +180,10 @@ for idx, item in enumerate(allitems[2:]):
                             sourcedisplays[chidx - idxoffset]['imageDisplay']['color'] = bdv.colors[ch]
 
                             tforms.append(mobie.metadata.get_affine_source_transform([imnames[chidx - idxoffset]],
-                                                                                     tf_sc))
+                                                                                     tf_sc, name='MapScaleMat'))
                             tforms.append(mobie.metadata.get_affine_source_transform([imnames[chidx - idxoffset]],
-                                                                                     tf_tr))
+                                                                                     tf_tr, name='Translation'))
+
                             sourcetransforms.extend(tforms)
 
                             thisview = mobie.metadata.get_view([imnames[chidx - idxoffset]], ['image'],
@@ -242,8 +243,10 @@ for idx, item in enumerate(allitems[2:]):
 
 
                     tforms=[]
-                    tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_sc))
-                    tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_tr))
+                    tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_sc, name='MapScaleMat'))
+                    tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_tr, name='Translation'))
+
+
 
                     thisview = mobie.metadata.get_view([itemname], ['image'],
                                                        [[itemname]],
@@ -252,35 +255,46 @@ for idx, item in enumerate(allitems[2:]):
                                                        is_exclusive=False,
                                                        source_transforms=tforms)
 
-                        mobie.add_image(input_path=mergemap['mapfile'],
-                                        input_key='',
-                                        root=mobie_root + '/data',
-                                        dataset_name=dataset,
-                                        image_name=itemname,
-                                        view=thisview,
-                                        resolution=tuple([np.round(pxs,4)] * 2),
-                                        chunks=mapchunks,
-                                        scale_factors=downscale_factors_map,
-                                        target='local',
-                                        max_jobs=4,
-                                        file_format=outformat,
-                                        unit=unit)
+                    mobie.add_image(input_path=mergemap['mapfile'],
+                                    input_key='',
+                                    root=mobie_root + '/data',
+                                    dataset_name=dataset,
+                                    image_name=itemname,
+                                    view=thisview,
+                                    resolution=tuple([np.round(pxs,4)] * 2),
+                                    chunks=mapchunks,
+                                    scale_factors=downscale_factors_map,
+                                    target='local',
+                                    max_jobs=4,
+                                    file_format=outformat,
+                                    unit=unit)
 
             else:
-                continue
+                sourcedisp = mobie.metadata.get_image_display(itemname, [itemname])
+                data0 = mergemap['im']
 
+                sourcedisp['imageDisplay']['color'] = 'white'
+                sourcedisp['imageDisplay']["blendingMode"] = "alpha"
 
-                view['attributes']['displaysettings'] = dict(
-                    {'id': setup_id, 'color': bdv.colors['W'], 'isset': 'true'})
-                view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-                if os.path.exists(outfile + '.xml'):
-                    view['attributes']['displaysettings'] = bdv.get_displaysettings(outfile)
+                if not item['MapMinMaxScale'] == ['0', '0']:
+                    sourcedisp['imageDisplay']['contrastLimits'] = list(map(int,item['MapMinMaxScale']))
                 else:
-                    view['attributes']['displaysettings']['min'] = data.min()  # item['MapMinMaxScale'][0]
-                    view['attributes']['displaysettings']['max'] = data.max()  # item['MapMinMaxScale'][1]
+                    sourcedisp['imageDisplay']['contrastLimits'] = [data0.min(), data0.max()]
 
-                bdv.write_bdv(outfile, data, view, downscale_factors, chunks=mapchunks)
+                tforms=[]
+                tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_sc, name = 'MapScaleMat'))
+                tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_tr, name = 'Translation'))
+
+
+
+
+
+                thisview = mobie.metadata.get_view([itemname], ['image'],
+                                                   [[itemname]],
+                                                   display_settings=[sourcedisp],
+                                                   menu_name='EM',
+                                                   is_exclusive=False,
+                                                   source_transforms=tforms)
 
 
                 mobie.add_image(input_path=mergemap['mergefile'],
@@ -288,6 +302,7 @@ for idx, item in enumerate(allitems[2:]):
                             root=mobie_root + '/data',
                             dataset_name=dataset,
                             image_name=itemname,
+                            view=thisview,
                             resolution=tuple([np.round(pxs,4)]*2),
                             chunks=mapchunks,
                             scale_factors=downscale_factors_map,
