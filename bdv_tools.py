@@ -2,7 +2,7 @@
 
 import numpy as np
 
-import h5py
+from mobie.validation.utils import SCHEMA_URLS, _download_schema
 
 import pybdv
 import xml.etree.ElementTree as ET
@@ -22,6 +22,18 @@ colors['B'] = '0-0-255-255'
 colors['W'] = '255-255-255-255'
 colors['BF'] = '255-255-255-255'
 
+def load_schema(schema):
+    assert isinstance(schema, (str, dict))
+    if isinstance(schema, str):
+        assert schema in SCHEMA_URLS
+        if not _download_schema():
+            print(f"Could not download the schema from {SCHEMA_URLS[schema]}. Check your internet connection.")
+            return
+        schema = os.path.expanduser(f"~/.mobie/{schema}.schema.json")
+        with open(schema, "r") as f:
+            schema = json.load(f)
+
+        return schema
 
 # functions to help playing with BDV
 

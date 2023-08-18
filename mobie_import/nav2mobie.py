@@ -18,6 +18,9 @@ from skimage import io
 
 import bdv_tools as bdv
 
+
+view_schema = bdv.load_schema('view')
+
 tomos = True
 blend = True
 skipmaps = False
@@ -79,7 +82,6 @@ def smallestcorner(corners):
 
 
 # =========================================
-
 
 navlines = em.loadtext(navfile)
 allitems = em.fullnav(navlines)
@@ -215,19 +217,54 @@ for idx, item in enumerate(allitems[2:]):
                                                                         rgbview)
 
                 else:
-                    continue
+                    sourcedisp = mobie.metadata.get_image_display(itemname, [itemname])
+                    data0 = mergemap['im']
 
+                    endidx = 5
 
+                    itemsuffix = itemname[-endidx:][itemname[-endidx:].rfind('_') + 1:]
+                    filesuffix = mfbase[-endidx:][mfbase[-endidx:].rfind('_') + 1:]
 
                     # single channel, check if color description in item label
-                    if itemname[-3:][itemname[-3:].rfind('_') + 1:] in bdv.colors.keys():
-                        sourcedisplays[chidx]['imageDisplay']['color'] = bdv.colors[
-                            itemname[-3:][itemname[-3:].rfind('_') + 1:]]
-                    elif mfbase[-3:][mfbase[-3:].rfind('_') + 1:] in bdv.colors.keys():
-                        sourcedisplays[chidx]['imageDisplay']['color'] = bdv.colors[
-                            mfbase[-3:][mfbase[-3:].rfind('_') + 1:]]
+                    if itemsuffix in bdv.colors.keys():
+                        sourcedisp['imageDisplay']['color'] = bdv.colors[itemsuffix]
+                    elif filesuffix in bdv.colors.keys():
+                        sourcedisp['imageDisplay']['color'] = bdv.colors[filesuffix]
+                    elif itemsuffix in view_schema['definitions']['colorModel']['oneOf'][0]['enum']:
+                        sourcedisp['imageDisplay']['color'] = itemsuffix
+                    elif filesuffix in view_schema['definitions']['colorModel']['oneOf'][0]['enum']:
+                        sourcedisp['imageDisplay']['color'] = filesuffix
 
-                    sourcedisplays[chidx]['imageDisplay']['contrastLimits'] = item['MapMinMaxScale']
+                    if not item['MapMinMaxScale'] == ['0', '0']:
+                        sourcedisp['imageDisplay']['contrastLimits'] = list(map(int,item['MapMinMaxScale']))
+                    else:
+                        sourcedisp['imageDisplay']['contrastLimits'] = [data0.min(), data0.max()]
+
+
+                    tforms=[]
+                    tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_sc))
+                    tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_tr))
+
+                    thisview = mobie.metadata.get_view([itemname], ['image'],
+                                                       [[itemname]],
+                                                       display_settings=[sourcedisp],
+                                                       menu_name='FM',
+                                                       is_exclusive=False,
+                                                       source_transforms=tforms)
+
+                        mobie.add_image(input_path=mergemap['mapfile'],
+                                        input_key='',
+                                        root=mobie_root + '/data',
+                                        dataset_name=dataset,
+                                        image_name=itemname,
+                                        view=thisview,
+                                        resolution=tuple([np.round(pxs,4)] * 2),
+                                        chunks=mapchunks,
+                                        scale_factors=downscale_factors_map,
+                                        target='local',
+                                        max_jobs=4,
+                                        file_format=outformat,
+                                        unit=unit)
 
             else:
                 continue
