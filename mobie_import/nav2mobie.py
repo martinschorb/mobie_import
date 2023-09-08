@@ -48,11 +48,16 @@ mobie_root = 'mobie'
 
 clem_menu = 'overlays'
 
-tomodir = 'tomo/done'
-recdir = 'tomo/done'
+tomodir = 'tomo/'
+recdir = 'tomo/'
+
+
+target = 'local'
+if cluster:
+    target = 'slurm'
 
 # %%
-navfile = '/home/schorb/s/data/AutoCLEM/clem.nav'
+navfile = '/g/emcf/schorb/data/CLEM_MoBIE/nav2.nav'
 # navfile = sys.argv[1]
 # file name navigator
 
@@ -306,7 +311,7 @@ for idx, item in enumerate(allitems[2:]):
                             resolution=tuple([np.round(pxs,4)]*2),
                             chunks=mapchunks,
                             scale_factors=downscale_factors_map,
-                            target='local',
+                            target=target,
                             max_jobs=4,
                             file_format=outformat,
                             unit=unit)
@@ -316,16 +321,11 @@ for idx, item in enumerate(allitems[2:]):
             # views = ds['views']
 
 
-        # mapinfo.append([idx, pxs, itemname, mat])
+        mapinfo.append([idx, pxs, itemname, mat])
 
 print('done writing maps')
 
 if tomos:
-
-    dirname = os.path.join(dirname0, 'tomos')
-
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
 
     print('starting to convert the tomograms')
     zstretch = blow_2d
@@ -335,18 +335,25 @@ if tomos:
 
     filelist = list()
 
-    for file in glob.iglob(recdir + '/*.rec', recursive=True):
+    for file in glob.iglob(recdir + '/*[._]rec*', recursive=True):
+
+        if file.split('.')[-1] == 'rec':
+            base = os.path.splitext(file)[0]
+        elif file.split('_')[-1] == 'rec.mrc':
+            base = '_'.join(file.split('_')[:-1])
+        else:
+            continue
+
         dual = False
 
-        base = os.path.splitext(file)[0]
 
         if base[-1] == 'a' or base[-1] == 'b':
             if os.path.exists(base[:-1] + '.rec'):
                 print('Dual axis reconstruction ' + base[:-1] + ' found, will skip individual axes.')
                 continue
-
-        outname = os.path.basename(base)
-        outfile = os.path.join(dirname, outname) + outformat
+        #
+        # outname = os.path.basename(base)
+        # outfile = os.path.join(recdir, outname) + outformat
 
         base1 = os.path.basename(base)
         parts = re.split('\.|_|\-|;| |,', base1)
@@ -495,42 +502,74 @@ if tomos:
 
         tf_tr = tf.matrix_to_transformation(mat_t).tolist()
 
-        setup_id = 0
+        sourcedisp = mobie.metadata.get_image_display(navlabel, [navlabel])
 
-        view = dict()
+        sourcedisp['imageDisplay']['color'] = 'white'
+        sourcedisp['imageDisplay']["blendingMode"] = "alpha"
 
-        view['resolution'] = [tomopx, tomopx, tomopx * zstretch]
-        view['setup_id'] = setup_id
-        view['setup_name'] = 'tomo_' + os.path.basename(base)
+        sourcedisp['imageDisplay']['contrastLimits'] = [int(mfile.header.dmin), int(mfile.header.dmax)]
 
-        view['OriginalFile'] = file
+        tforms = []
+        tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_sc, name='MapScaleMat'))
+        tforms.append(mobie.metadata.get_affine_source_transform([itemname], tf_tr, name='Translation'))
 
-        view['trafo'] = dict()
-        view['trafo']['Translation'] = tf_tr
-        view['trafo']['RotScale'] = tf_sc
+        thisview = mobie.metadata.get_view([itemname], ['image'],
+                                           [[itemname]],
+                                           display_settings=[sourcedisp],
+                                           menu_name='Tomograms',
+                                           is_exclusive=False,
+                                           source_transforms=tforms)
 
-        view['attributes'] = dict()
+        mobie.add_image(input_path=mergemap['mergefile'],
+                        input_key='data',
+                        root=mobie_root + '/data',
+                        dataset_name=dataset,
+                        image_name=itemname,
+                        view=thisview,
+                        resolution=tuple([np.round(pxs, 4)] * 2),
+                        chunks=mapchunks,
+                        scale_factors=downscale_factors_map,
+                        target=target,
+                        max_jobs=4,
+                        file_format=outformat,
+                        unit=unit)
 
-        view['attributes']['displaysettings'] = dict({'id': setup_id, 'color': bdv.colors['W'], 'isset': 'true'})
-        view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
-
-        view['attributes']['displaysettings']['min'] = -127
-        view['attributes']['displaysettings']['max'] = 127
-
-        data = mfile.data
-
-        if cluster:
-            data2 = file
-        else:
-            # check if volume is rotated
-            if data.shape[0] / data.shape[1] > 5:
-                data = np.swapaxes(data, 0, 1)
-
-            data0 = np.swapaxes(data, 0, 2)
-            data1 = np.fliplr(data0)
-            data2 = np.swapaxes(data1, 0, 2)
-
-        bdv.write_bdv(outfile, data2, view, blow_2d=blow_2d, downscale_factors=downscale_factors, cluster=cluster,
-                      infile=file, chunks=tomochunks)
+        # setup_id = 0
+        #
+        # view = dict()
+        #
+        # view['resolution'] = [tomopx, tomopx, tomopx * zstretch]
+        # view['setup_id'] = setup_id
+        # view['setup_name'] = 'tomo_' + os.path.basename(base)
+        #
+        # view['OriginalFile'] = file
+        #
+        # view['trafo'] = dict()
+        # view['trafo']['Translation'] = tf_tr
+        # view['trafo']['RotScale'] = tf_sc
+        #
+        # view['attributes'] = dict()
+        #
+        # view['attributes']['displaysettings'] = dict({'id': setup_id, 'color': bdv.colors['W'], 'isset': 'true'})
+        # view['attributes']['displaysettings']['Projection_Mode'] = 'Average'
+        #
+        # view['attributes']['displaysettings']['min'] = -127
+        # view['attributes']['displaysettings']['max'] = 127
+        #
+        # data = mfile.data
+        #
+        # if cluster:
+        #     data2 = file
+        # else:
+        #     # check if volume is rotated
+        #     if data.shape[0] / data.shape[1] > 5:
+        #         data = np.swapaxes(data, 0, 1)
+        #
+        #     data0 = np.swapaxes(data, 0, 2)
+        #     data1 = np.fliplr(data0)
+        #     data2 = np.swapaxes(data1, 0, 2)
+        #
+        # bdv.write_bdv(outfile, data2, view, blow_2d=blow_2d, downscale_factors=downscale_factors, cluster=cluster,
+        #               infile=file, chunks=tomochunks)
 
         mfile.close()

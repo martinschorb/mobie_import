@@ -390,3 +390,13 @@ def str2dict(fun_in):
 
    
     return output
+
+
+#%%
+
+
+#===========================================================================
+
+# def xmltrafo2mat(str_in):
+#     return np.array(list(map(float,str_in.split(' ')))).reshape([3,4])
+#
