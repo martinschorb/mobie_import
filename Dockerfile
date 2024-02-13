@@ -3,15 +3,11 @@ FROM mambaorg/micromamba:focal
 MAINTAINER Martin Schorb (martin.schorb@embl.de)
 
 ARG ARCH=linux-64
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+
 ENV IMOD_VER=4.11.24 CUDA_VER=8.0
 
 ENV SHELL=/bin/bash LANG=C.UTF-8 LC_ALL=C.UTF-8
-
-RUN   micromamba install --yes -n base -c conda-forge \
-      python=3.10 \
-      mobie_utils \
-       && \
-      micromamba clean --all --yes
 
 USER root
 
@@ -23,11 +19,7 @@ RUN apt-get update && \
 
 USER $MAMBA_USER
 
-RUN micromamba shell init --shell bash --root-prefix=~/micromamba \
-    && \
-    eval "$(micromamba shell hook --shell bash)" \
-    && \
-    micromamba activate base \
+RUN micromamba activate base \
     && \
     IMOD_INSTALLER=imod_"$IMOD_VER"_RHEL7-64_CUDA"$CUDA_VER".sh \
     && \
@@ -35,6 +27,12 @@ RUN micromamba shell init --shell bash --root-prefix=~/micromamba \
     && \
     bash $IMOD_INSTALLER -yes -dir $HOME/IMOD -skip \
     && \
-    export PATH=$PATH:$HOME/IMOD/bin
+    export PATH=$PATH:$HOME/IMOD/bin\
+    && \
+    micromamba install --yes -n base -c conda-forge \
+    python=3.10 \
+    mobie_utils \
+    && \
+    micromamba clean --all --yes
 
 ENTRYPOINT bash
